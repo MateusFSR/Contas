@@ -1,6 +1,6 @@
 // ================= CONFIGURAÇÃO DO GITHUB =================
-const USUARIO_GITHUB = "MateusFSR"; 
-const REPO_GITHUB = "Contas";
+const USUARIO_GITHUB = "SEU_USUARIO_AQUI"; 
+const REPO_GITHUB = "NOME_DO_SEU_REPOSITORIO_AQUI";
 const TOKEN_GITHUB = "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";
 const ARQUIVO_DADOS = "dados.json";
 
@@ -12,11 +12,12 @@ let dadosPadrao = {
   ]
 };
 
-let dados = dadosPadrao;
+let dados = JSON.parse(localStorage.getItem("dados")) || dadosPadrao;
 
-// ================= FUNÇÕES DE PERSISTÊNCIA (GITHUB API) =================
+// ================= FUNÇÕES DE SINCRONIZAÇÃO (GITHUB) =================
 
 async function carregarDadosDoGitHub() {
+  console.log("Buscando dados no GitHub...");
   const url = `https://api.github.com/repos/${USUARIO_GITHUB}/${REPO_GITHUB}/contents/${ARQUIVO_DADOS}`;
   
   try {
@@ -26,14 +27,12 @@ async function carregarDadosDoGitHub() {
 
     if (res.ok) {
       const json = await res.json();
-      // Decodifica de Base64 para JSON
+      // Decodifica de Base64 para JSON (suportando acentos)
       const conteudoDecodificado = decodeURIComponent(escape(atob(json.content)));
       dados = JSON.parse(conteudoDecodificado);
-      console.log("✅ Dados sincronizados do GitHub.");
+      console.log("✅ Dados sincronizados do GitHub com sucesso.");
     } else {
-      console.warn("⚠️ Arquivo não encontrado no GitHub. Usando dados locais/padrão.");
-      const local = localStorage.getItem("dados");
-      if (local) dados = JSON.parse(local);
+      console.warn("⚠️ Arquivo não encontrado no repositório. Usando dados locais.");
     }
   } catch (erro) {
     console.error("Erro ao conectar com GitHub:", erro);
@@ -41,29 +40,32 @@ async function carregarDadosDoGitHub() {
   render();
 }
 
-async function salvar() {
-  // Salva no LocalStorage (Backup imediato)
-  localStorage.setItem("dados", JSON.stringify(dados));
+async function salvarNoGitHub() {
+  const btn = document.getElementById("btnSalvar");
+  if (btn) {
+    btn.innerText = "⏳ Salvando...";
+    btn.disabled = true;
+  }
 
   const url = `https://api.github.com/repos/${USUARIO_GITHUB}/${REPO_GITHUB}/contents/${ARQUIVO_DADOS}`;
 
   try {
-    // 1. Pega o SHA (identificador da versão atual)
+    // 1. Tentar pegar o SHA do arquivo existente
+    let sha = "";
     const resGet = await fetch(url, {
       headers: { 'Authorization': `token ${TOKEN_GITHUB}` }
     });
     
-    let sha = "";
     if (resGet.ok) {
       const dataGet = await resGet.json();
       sha = dataGet.sha;
     }
 
-    // 2. Prepara o conteúdo
+    // 2. Preparar o conteúdo em Base64
     const conteudoJSON = JSON.stringify(dados, null, 2);
     const conteudoBase64 = btoa(unescape(encodeURIComponent(conteudoJSON)));
 
-    // 3. Faz o "Upload" (PUT)
+    // 3. Enviar atualização (PUT)
     const resPut = await fetch(url, {
       method: 'PUT',
       headers: {
@@ -71,15 +73,27 @@ async function salvar() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        message: "📊 Atualização de dados via WebApp",
+        message: "Sincronização manual via WebApp",
         content: conteudoBase64,
         sha: sha
       })
     });
 
-    if (resPut.ok) console.log("☁️ Salvo no GitHub!");
+    if (resPut.ok) {
+      alert("✅ Dados salvos no GitHub!");
+      localStorage.setItem("dados", JSON.stringify(dados));
+    } else {
+      const erroMsg = await resPut.json();
+      alert("❌ Erro ao salvar: " + erroMsg.message);
+    }
   } catch (erro) {
-    console.error("Erro ao salvar no GitHub:", erro);
+    console.error("Erro de conexão:", erro);
+    alert("❌ Erro ao conectar ao GitHub.");
+  } finally {
+    if (btn) {
+      btn.innerText = "☁️ Salvar no GitHub";
+      btn.disabled = false;
+    }
   }
 }
 
@@ -127,7 +141,7 @@ function renderGrafico(gastos) {
   });
 }
 
-// ================= ADICIONAR =================
+// ================= ADICIONAR / REMOVER / EDITAR =================
 function adicionar() {
   const desc = document.getElementById("desc").value;
   const valor = parseFloat(document.getElementById("valor").value);
@@ -143,33 +157,31 @@ function adicionar() {
   if (!dados[mes]) dados[mes] = [];
   dados[mes].push(novo);
 
-  salvar(); // Salva no GitHub
+  localStorage.setItem("dados", JSON.stringify(dados));
   render();
 }
 
-// ================= REMOVER =================
 function remover(index) {
   const mes = document.getElementById("filtroMes").value;
   dados[mes].splice(index, 1);
-  salvar(); // Salva no GitHub
+  localStorage.setItem("dados", JSON.stringify(dados));
   render();
 }
 
-// ================= EDITAR =================
 function editarCampo(index, campo, valor) {
   const mes = document.getElementById("filtroMes").value;
   if (campo === "valor") valor = Number(valor);
   dados[mes][index][campo] = valor;
-  salvar(); // Salva no GitHub
+  localStorage.setItem("dados", JSON.stringify(dados));
   render();
 }
 
-// ================= RENDERIZAÇÃO PRINCIPAL =================
+// ================= RENDERIZAÇÃO =================
 function render() {
   const mesElement = document.getElementById("filtroMes");
-  if(!mesElement) return;
-  
+  if (!mesElement) return;
   const mes = mesElement.value;
+  
   const lista = document.getElementById("lista");
   const resumo = document.getElementById("resumo");
 
@@ -192,7 +204,7 @@ function render() {
     } else {
       saida += item.valor;
       let origem = item.origem || "Pagamento";
-      if(gastos[origem]) gastos[origem][item.cat] += item.valor;
+      if (gastos[origem]) gastos[origem][item.cat] += item.valor;
     }
 
     html += `
@@ -222,15 +234,15 @@ function render() {
   lista.innerHTML = html;
   ativarDrag();
 
-  // Cálculos de Metas e Resumo
-  const metas = (v) => ({ Necessidades: v * 0.4, Pessoal: v * 0.3, Guardar: v * 0.3 });
-  let metaPag = metas(pagamento);
-  let metaAdi = metas(adiantamento);
+  // Metas e Resumo
+  const calcMetas = (v) => ({ Necessidades: v * 0.4, Pessoal: v * 0.3, Guardar: v * 0.3 });
+  let metaPag = calcMetas(pagamento);
+  let metaAdi = calcMetas(adiantamento);
 
   resumo.innerHTML = `
   <div class="card">
     <h2>Resumo - ${mes}</h2>
-    ${gerarGraficoHTML(pagamento, adiantamento)}
+    ${gerarGraficoTopoHTML(pagamento, adiantamento)}
     <div class="resumo-topo">
       <div class="resumo-box"><span>Total Geral</span><strong id="totalGeral">R$ 0</strong></div>
       <div class="resumo-box pagamento-box"><span>Pagamento</span><strong id="valorPagamento">R$ 0</strong></div>
@@ -243,15 +255,15 @@ function render() {
     <hr>
     <div class="bloco-limite">
       <h3>💰 Pagamento</h3>
-      ${gerarBarraMeta("Necessidades", gastos.Pagamento.Necessidades, metaPag.Necessidades)}
-      ${gerarBarraMeta("Pessoal", gastos.Pagamento.Pessoal, metaPag.Pessoal)}
-      ${gerarBarraMeta("Guardar", gastos.Pagamento.Guardar, metaPag.Guardar)}
+      ${gerarBarraProgresso("Necessidades", gastos.Pagamento.Necessidades, metaPag.Necessidades)}
+      ${gerarBarraProgresso("Pessoal", gastos.Pagamento.Pessoal, metaPag.Pessoal)}
+      ${gerarBarraProgresso("Guardar", gastos.Pagamento.Guardar, metaPag.Guardar)}
     </div>
     <div class="bloco-limite">
       <h3>💵 Adiantamento</h3>
-      ${gerarBarraMeta("Necessidades", gastos.Adiantamento.Necessidades, metaAdi.Necessidades)}
-      ${gerarBarraMeta("Pessoal", gastos.Adiantamento.Pessoal, metaAdi.Pessoal)}
-      ${gerarBarraMeta("Guardar", gastos.Adiantamento.Guardar, metaAdi.Guardar)}
+      ${gerarBarraProgresso("Necessidades", gastos.Adiantamento.Necessidades, metaAdi.Necessidades)}
+      ${gerarBarraProgresso("Pessoal", gastos.Adiantamento.Pessoal, metaAdi.Pessoal)}
+      ${gerarBarraProgresso("Guardar", gastos.Adiantamento.Guardar, metaAdi.Guardar)}
     </div>
   </div>`;
 
@@ -265,24 +277,21 @@ function render() {
   }, 100);
 }
 
-// ================= FUNÇÕES AUXILIARES DE UI =================
+// ================= AUXILIARES DE INTERFACE =================
 
-function gerarBarraMeta(nome, gasto, meta) {
+function gerarBarraProgresso(nome, gasto, meta) {
   let diff = meta - gasto;
   let perc = meta ? (gasto / meta) * 100 : 0;
   return `
     <p><strong>${nome}</strong></p>
-    <p>Meta: R$ ${meta.toFixed(2)} | Gasto: R$ ${gasto}</p>
     <div class="barra-container">
-      <div class="barra ${perc<=100?"verde":"vermelho"}" style="width:${Math.min(perc,100)}%">
-        ${perc.toFixed(0)}%
-      </div>
+      <div class="barra ${perc<=100?"verde":"vermelho"}" style="width:${Math.min(perc,100)}%">${perc.toFixed(0)}%</div>
     </div>
-    <p>${diff >= 0 ? "🟢 Pode gastar R$ " + diff.toFixed(2) : "🔴 Excedeu R$ " + Math.abs(diff).toFixed(2)}</p>
+    <p><small>Meta: R$ ${meta.toFixed(2)} | Resta: R$ ${diff.toFixed(2)}</small></p>
   `;
 }
 
-function gerarGraficoHTML(pag, adi) {
+function gerarGraficoTopoHTML(pag, adi) {
   let total = pag + adi;
   let pP = total ? (pag/total)*100 : 0;
   let pA = total ? (adi/total)*100 : 0;
@@ -304,9 +313,10 @@ function animarValor(id, valorFinal) {
 }
 
 function mudarMes(mes){
-  document.getElementById("filtroMes").value = mes;
+  const el = document.getElementById("filtroMes");
+  if(el) el.value = mes;
   document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.remove("ativo"));
-  event.target.classList.add("ativo");
+  if(event) event.target.classList.add("ativo");
   render();
 }
 
@@ -325,7 +335,7 @@ function ativarDrag() {
         let novaLista = [];
         novasLinhas.forEach(l => novaLista.push(dados[mes][l.dataset.index]));
         dados[mes] = novaLista;
-        salvar();
+        localStorage.setItem("dados", JSON.stringify(dados));
         render();
     });
   });

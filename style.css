@@ -1,31 +1,42 @@
 body {
   font-family: Arial;
-  background: #f4f4f4;
+  background: #0f172a;
+  color: white;
   text-align: center;
 }
 
-.login-container {
-  margin-top: 100px;
+h1 {
+  margin-top: 20px;
 }
 
-input {
-  display: block;
-  margin: 10px auto;
+.botoes button {
+  margin: 10px;
   padding: 10px;
-}
-
-button {
-  padding: 10px 20px;
+  border: none;
+  background: #22c55e;
+  color: white;
+  border-radius: 8px;
   cursor: pointer;
 }
 
-table {
-  margin: 20px auto;
-  border-collapse: collapse;
+.card {
+  background: #1e293b;
+  margin: 15px auto;
+  padding: 15px;
+  border-radius: 10px;
   width: 80%;
 }
 
+table {
+  width: 100%;
+  margin-top: 10px;
+}
+
 td, th {
-  border: 1px solid #ccc;
-  padding: 10px;
+  padding: 8px;
+}
+
+.total {
+  font-weight: bold;
+  margin-top: 10px;
 }

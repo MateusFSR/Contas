@@ -1,5 +1,5 @@
 // ================= CONFIGURAÇÃO SUPABASE =================
-const SUPABASE_URL = "amqbggvxcyutlzubadio"; // Ex: https://xyz.supabase.co
+const SUPABASE_URL = "https://amqbggvxcyutlzubadio.supabase.co"; // Ex: https://xyz.supabase.co
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtcWJnZ3Z4Y3l1dGx6dWJhZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.PtlDWAmK7wCmFAs4QZIv3CSnlbqS11v8DCXw6K7NTvg"; 
 const NOME_USUARIO = "mateusfsr"; // Identificador único para seus dados
 

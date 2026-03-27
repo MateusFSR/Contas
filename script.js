@@ -1,8 +1,7 @@
-// ================= CONFIGURAÇÃO DO GITHUB =================
-const USUARIO_GITHUB = "MateusFSR"; 
-const REPO_GITHUB = "Contas";
-const TOKEN_GITHUB = "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";
-const ARQUIVO_DADOS = "dados.json";
+// ================= CONFIGURAÇÃO SUPABASE =================
+const SUPABASE_URL = "amqbggvxcyutlzubadio"; // Ex: https://xyz.supabase.co
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtcWJnZ3Z4Y3l1dGx6dWJhZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.PtlDWAmK7wCmFAs4QZIv3CSnlbqS11v8DCXw6K7NTvg"; 
+const NOME_USUARIO = "mateusfsr"; // Identificador único para seus dados
 
 // ================= DADOS INICIAIS =================
 let dadosPadrao = {
@@ -12,86 +11,88 @@ let dadosPadrao = {
   ]
 };
 
+// Tenta carregar do LocalStorage apenas como fallback imediato
 let dados = JSON.parse(localStorage.getItem("dados")) || dadosPadrao;
 
-// ================= FUNÇÕES DE SINCRONIZAÇÃO (GITHUB) =================
+// ================= SINCRONIZAÇÃO COM O BANCO (SUPABASE) =================
 
-async function carregarDadosDoGitHub() {
-  console.log("Buscando dados no GitHub...");
-  const url = `https://api.github.com/repos/${USUARIO_GITHUB}/${REPO_GITHUB}/contents/${ARQUIVO_DADOS}`;
+async function carregarDadosDoBanco() {
+  console.log("Conectando ao banco de dados...");
   
   try {
-    const res = await fetch(url, {
-      headers: { 'Authorization': `token ${TOKEN_GITHUB}` }
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}&select=dados_json`, {
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`
+      }
     });
 
-    if (res.ok) {
-      const json = await res.json();
-      // Decodifica de Base64 para JSON (suportando acentos)
-      const conteudoDecodificado = decodeURIComponent(escape(atob(json.content)));
-      dados = JSON.parse(conteudoDecodificado);
-      console.log("✅ Dados sincronizados do GitHub com sucesso.");
+    const resultado = await res.json();
+
+    if (resultado && resultado.length > 0) {
+      dados = resultado[0].dados_json;
+      console.log("✅ Dados carregados do Supabase.");
     } else {
-      console.warn("⚠️ Arquivo não encontrado no repositório. Usando dados locais.");
+      console.warn("⚠️ Nenhum dado encontrado no banco. Usando local/padrão.");
     }
   } catch (erro) {
-    console.error("Erro ao conectar com GitHub:", erro);
+    console.error("Erro na conexão com Supabase:", erro);
   }
   render();
 }
 
-async function salvarNoGitHub() {
+async function salvarNoBanco() {
   const btn = document.getElementById("btnSalvar");
   if (btn) {
     btn.innerText = "⏳ Salvando...";
     btn.disabled = true;
   }
 
-  const url = `https://api.github.com/repos/${USUARIO_GITHUB}/${REPO_GITHUB}/contents/${ARQUIVO_DADOS}`;
-
   try {
-    // 1. Tentar pegar o SHA do arquivo existente
-    let sha = "";
-    const resGet = await fetch(url, {
-      headers: { 'Authorization': `token ${TOKEN_GITHUB}` }
+    // 1. Verifica se já existe um registro para este usuário
+    const verificar = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}`, {
+        headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
     });
-    
-    if (resGet.ok) {
-      const dataGet = await resGet.json();
-      sha = dataGet.sha;
+    const existe = await verificar.json();
+
+    let res;
+    // 2. Se existe, atualiza (PATCH). Se não, cria (POST).
+    if (existe && existe.length > 0) {
+      res = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}`, {
+        method: 'PATCH',
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({ dados_json: dados })
+      });
+    } else {
+      res = await fetch(`${SUPABASE_URL}/rest/v1/financas`, {
+        method: 'POST',
+        headers: {
+          "apikey": SUPABASE_KEY,
+          "Authorization": `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify({ usuario: NOME_USUARIO, dados_json: dados })
+      });
     }
 
-    // 2. Preparar o conteúdo em Base64
-    const conteudoJSON = JSON.stringify(dados, null, 2);
-    const conteudoBase64 = btoa(unescape(encodeURIComponent(conteudoJSON)));
-
-    // 3. Enviar atualização (PUT)
-    const resPut = await fetch(url, {
-      method: 'PUT',
-      headers: {
-        'Authorization': `token ${TOKEN_GITHUB}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        message: "Sincronização manual via WebApp",
-        content: conteudoBase64,
-        sha: sha
-      })
-    });
-
-    if (resPut.ok) {
-      alert("✅ Dados salvos no GitHub!");
+    if (res.ok) {
+      alert("✅ Sincronizado com o Banco de Dados!");
       localStorage.setItem("dados", JSON.stringify(dados));
     } else {
-      const erroMsg = await resPut.json();
-      alert("❌ Erro ao salvar: " + erroMsg.message);
+      alert("❌ Erro ao salvar no banco.");
     }
   } catch (erro) {
-    console.error("Erro de conexão:", erro);
-    alert("❌ Erro ao conectar ao GitHub.");
+    console.error(erro);
+    alert("❌ Falha na comunicação com o servidor.");
   } finally {
     if (btn) {
-      btn.innerText = "☁️ Salvar no GitHub";
+      btn.innerText = "☁️ Salvar no Banco";
       btn.disabled = false;
     }
   }
@@ -109,7 +110,7 @@ function login() {
   }
 }
 
-// ================= GRÁFICO (CHART) =================
+// ================= GRÁFICO (CHART JS) =================
 let grafico;
 
 function renderGrafico(gastos) {
@@ -176,7 +177,7 @@ function editarCampo(index, campo, valor) {
   render();
 }
 
-// ================= RENDERIZAÇÃO =================
+// ================= RENDERIZAÇÃO DA PÁGINA =================
 function render() {
   const mesElement = document.getElementById("filtroMes");
   if (!mesElement) return;
@@ -234,52 +235,52 @@ function render() {
   lista.innerHTML = html;
   ativarDrag();
 
-  // Metas e Resumo
-  const calcMetas = (v) => ({ Necessidades: v * 0.4, Pessoal: v * 0.3, Guardar: v * 0.3 });
-  let metaPag = calcMetas(pagamento);
-  let metaAdi = calcMetas(adiantamento);
+  // Cálculos de Resumo
+  const metas = (v) => ({ Necessidades: v * 0.4, Pessoal: v * 0.3, Guardar: v * 0.3 });
+  let mPag = metas(pagamento);
+  let mAdi = metas(adiantamento);
 
   resumo.innerHTML = `
   <div class="card">
     <h2>Resumo - ${mes}</h2>
-    ${gerarGraficoTopoHTML(pagamento, adiantamento)}
+    ${gerarGraficoHTML(pagamento, adiantamento)}
     <div class="resumo-topo">
-      <div class="resumo-box"><span>Total Geral</span><strong id="totalGeral">R$ 0</strong></div>
-      <div class="resumo-box pagamento-box"><span>Pagamento</span><strong id="valorPagamento">R$ 0</strong></div>
-      <div class="resumo-box adiantamento-box"><span>Adiantamento</span><strong id="valorAdiantamento">R$ 0</strong></div>
+      <div class="resumo-box"><span>Geral</span><strong id="totalGeral">0</strong></div>
+      <div class="resumo-box pagamento-box"><span>Pagamento</span><strong id="vPag">0</strong></div>
+      <div class="resumo-box adiantamento-box"><span>Adiantamento</span><strong id="vAdi">0</strong></div>
     </div>
     <div class="resumo-topo" style="margin-top:10px;">
-      <div class="resumo-box"><span>Saídas</span><strong id="valorSaida">R$ 0</strong></div>
-      <div class="resumo-box"><span>Saldo</span><strong id="valorSaldo">R$ 0</strong></div>
+      <div class="resumo-box"><span>Saídas</span><strong id="vSaida">0</strong></div>
+      <div class="resumo-box"><span>Saldo</span><strong id="vSaldo">0</strong></div>
     </div>
     <hr>
     <div class="bloco-limite">
       <h3>💰 Pagamento</h3>
-      ${gerarBarraProgresso("Necessidades", gastos.Pagamento.Necessidades, metaPag.Necessidades)}
-      ${gerarBarraProgresso("Pessoal", gastos.Pagamento.Pessoal, metaPag.Pessoal)}
-      ${gerarBarraProgresso("Guardar", gastos.Pagamento.Guardar, metaPag.Guardar)}
+      ${gerarBarra("Necessidades", gastos.Pagamento.Necessidades, mPag.Necessidades)}
+      ${gerarBarra("Pessoal", gastos.Pagamento.Pessoal, mPag.Pessoal)}
+      ${gerarBarra("Guardar", gastos.Pagamento.Guardar, mPag.Guardar)}
     </div>
     <div class="bloco-limite">
       <h3>💵 Adiantamento</h3>
-      ${gerarBarraProgresso("Necessidades", gastos.Adiantamento.Necessidades, metaAdi.Necessidades)}
-      ${gerarBarraProgresso("Pessoal", gastos.Adiantamento.Pessoal, metaAdi.Pessoal)}
-      ${gerarBarraProgresso("Guardar", gastos.Adiantamento.Guardar, metaAdi.Guardar)}
+      ${gerarBarra("Necessidades", gastos.Adiantamento.Necessidades, mAdi.Necessidades)}
+      ${gerarBarra("Pessoal", gastos.Adiantamento.Pessoal, mAdi.Pessoal)}
+      ${gerarBarra("Guardar", gastos.Adiantamento.Guardar, mAdi.Guardar)}
     </div>
   </div>`;
 
   renderGrafico(gastos);
   setTimeout(() => {
     animarValor("totalGeral", entrada);
-    animarValor("valorPagamento", pagamento);
-    animarValor("valorAdiantamento", adiantamento);
-    animarValor("valorSaida", saida);
-    animarValor("valorSaldo", entrada - saida);
+    animarValor("vPag", pagamento);
+    animarValor("vAdi", adiantamento);
+    animarValor("vSaida", saida);
+    animarValor("vSaldo", entrada - saida);
   }, 100);
 }
 
-// ================= AUXILIARES DE INTERFACE =================
+// ================= AUXILIARES DE UI =================
 
-function gerarBarraProgresso(nome, gasto, meta) {
+function gerarBarra(nome, gasto, meta) {
   let diff = meta - gasto;
   let perc = meta ? (gasto / meta) * 100 : 0;
   return `
@@ -291,13 +292,13 @@ function gerarBarraProgresso(nome, gasto, meta) {
   `;
 }
 
-function gerarGraficoTopoHTML(pag, adi) {
+function gerarGraficoHTML(pag, adi) {
   let total = pag + adi;
   let pP = total ? (pag/total)*100 : 0;
   let pA = total ? (adi/total)*100 : 0;
   return `<div class="grafico">
-    <div class="barra-grafico pagamento" style="width:${pP}%">${pP.toFixed(0)}%</div>
-    <div class="barra-grafico adiantamento" style="width:${pA}%">${pA.toFixed(0)}%</div>
+    <div class="barra-grafico pagamento" style="width:${pP}%"></div>
+    <div class="barra-grafico adiantamento" style="width:${pA}%"></div>
   </div>`;
 }
 
@@ -308,13 +309,12 @@ function animarValor(id, valorFinal) {
     atual += incremento;
     if (atual >= valorFinal) { atual = valorFinal; clearInterval(intervalo); }
     let el = document.getElementById(id);
-    if (el) el.innerText = "R$ " + atual.toFixed(0);
+    if (el) el.innerText = "R$ " + Math.floor(atual);
   }, 20);
 }
 
 function mudarMes(mes){
-  const el = document.getElementById("filtroMes");
-  if(el) el.value = mes;
+  document.getElementById("filtroMes").value = mes;
   document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.remove("ativo"));
   if(event) event.target.classList.add("ativo");
   render();
@@ -325,21 +325,17 @@ function ativarDrag() {
   let arrastando;
   linhas.forEach(linha => {
     linha.addEventListener("dragstart", () => arrastando = linha);
-    linha.addEventListener("dragover", e => {
-      e.preventDefault();
-      if (arrastando !== linha) linha.parentNode.insertBefore(arrastando, linha);
-    });
+    linha.addEventListener("dragover", e => { e.preventDefault(); if (arrastando !== linha) linha.parentNode.insertBefore(arrastando, linha); });
     linha.addEventListener("dragend", () => {
         const mes = document.getElementById("filtroMes").value;
         const novasLinhas = document.querySelectorAll("#tabelaDrag tr[draggable=true]");
         let novaLista = [];
         novasLinhas.forEach(l => novaLista.push(dados[mes][l.dataset.index]));
         dados[mes] = novaLista;
-        localStorage.setItem("dados", JSON.stringify(dados));
         render();
     });
   });
 }
 
 // ================= INICIALIZAÇÃO =================
-window.onload = carregarDadosDoGitHub;
+window.onload = carregarDadosDoBanco;

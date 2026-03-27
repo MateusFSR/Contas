@@ -1,7 +1,7 @@
 // ================= CONFIGURAÇÃO DO GITHUB =================
-const USUARIO_GITHUB = "SEU_USUARIO_AQUI"; 
-const REPO_GITHUB = "NOME_DO_SEU_REPOSITORIO_AQUI";
-const TOKEN_GITHUB = "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";
+const USUARIO_GITHUB = "MateusFSR"; 
+const REPO_GITHUB = "Contas";
+const TOKEN_GITHUB = "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";
 const ARQUIVO_DADOS = "dados.json";
 
 // ================= DADOS INICIAIS =================

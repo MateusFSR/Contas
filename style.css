@@ -1,665 +1,318 @@
-/* ================= BASE ================= */
+/* ================= VARIÁVEIS DE CORES (TEMA) ================= */
+:root {
+    --bg-body: linear-gradient(180deg, #f8fafc, #eef2f7);
+    --bg-card: white;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --input-bg: white;
+    --resumo-bg: #f8fafc;
+    --shadow: rgba(0, 0, 0, 0.08);
+}
 
-body{
+/* Cores para o Modo Escuro */
+body.dark-mode {
+    --bg-body: #0f172a; /* Azul marinho muito escuro */
+    --bg-card: #1e293b; /* Azul metálico escuro */
+    --text-main: #f1f5f9; /* Branco acinzentado */
+    --text-muted: #94a3b8;
+    --border-color: #334155;
+    --input-bg: #0f172a;
+    --resumo-bg: #111827;
+    --shadow: rgba(0, 0, 0, 0.4);
+}
 
-font-family:'Segoe UI',Arial,sans-serif;
-
-background:linear-gradient(180deg,#f8fafc,#eef2f7);
-
-color:#1e293b;
-
-margin:0;
-
-text-align:center;
-
+/* ================= BASE & RESET ================= */
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg-body);
+    color: var(--text-main);
+    margin: 0;
+    padding-bottom: 100px;
+    text-align: center;
+    transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* ================= TITULOS ================= */
+h1 { margin-top: 30px; font-weight: 600; }
+h2 { font-size: 18px; color: #f97316; margin-bottom: 15px; }
+h3 { color: #f97316; margin-top: 10px; }
 
-h1{
-
-margin-top:30px;
-
-font-weight:600;
-
+/* ================= CARD (RESPONSIVO) ================= */
+.card {
+    background: var(--bg-card);
+    border-radius: 16px;
+    padding: 15px;
+    margin: 15px auto;
+    width: 95%;
+    max-width: 900px;
+    box-shadow: 0 10px 30px var(--shadow);
+    border: 1px solid var(--border-color);
+    transition: 0.25s;
+    box-sizing: border-box;
 }
 
-h2{
-
-font-size:18px;
-
-color:#f97316;
-
+@media (min-width: 768px) {
+    .card { width: 85%; padding: 25px; }
 }
 
-h3{
+.card:hover { transform: translateY(-3px); }
 
-color:#f97316;
-
+/* ================= FORMULÁRIO (ADAPTÁVEL) ================= */
+.form-linha {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 10px;
 }
 
-/* ================= CARD ================= */
-
-.card{
-
-background:white;
-
-border-radius:16px;
-
-padding:20px;
-
-margin:20px auto;
-
-width:85%;
-
-box-shadow:0 10px 30px rgba(0,0,0,0.08);
-
-border:1px solid #e2e8f0;
-
-transition:0.25s;
-
+@media (min-width: 600px) {
+    .form-linha { flex-direction: row; }
 }
 
-.card:hover{
-
-transform:translateY(-3px);
-
+.form-linha input, .form-linha select {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-main);
+    font-size: 16px;
+    transition: 0.3s;
 }
 
-/* ================= BOTÕES ================= */
-
-button{
-
-padding:10px 20px;
-
-border:none;
-
-border-radius:8px;
-
-background:#f97316;
-
-color:white;
-
-cursor:pointer;
-
-font-weight:600;
-
-transition:0.2s;
-
-}
-
-button:hover{
-
-background:#ea580c;
-
-transform:translateY(-1px);
-
-}
-
-/* ================= FORM ================= */
-
-.form-linha{
-
-display:flex;
-
-gap:10px;
-
-margin-bottom:10px;
-
-}
-
-.form-linha input,
-.form-linha select{
-
-flex:1;
-
-padding:10px;
-
-border-radius:8px;
-
-border:1px solid #e2e8f0;
-
-background:white;
-
-}
-
-/* ================= INPUT FOCUS ================= */
-
-input:focus,select:focus{
-
-outline:none;
-
-border:1px solid #f97316;
-
-box-shadow:0 0 0 2px rgba(249,115,22,0.2);
-
+input:focus, select:focus {
+    outline: none;
+    border: 1px solid #f97316;
+    box-shadow: 0 0 0 2px rgba(249,115,22,0.2);
 }
 
 /* ================= TABELA ================= */
-
-table{
-
-width:100%;
-
-margin-top:15px;
-
-border-collapse:collapse;
-
+#lista {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
-th{
-
-background:#f8fafc;
-
-padding:10px;
-
-font-weight:600;
-
+table {
+    width: 100%;
+    min-width: 600px;
+    margin-top: 15px;
+    border-collapse: collapse;
 }
 
-td{
-
-padding:8px;
-
-border-bottom:1px solid #e2e8f0;
-
+th { 
+    background: var(--resumo-bg); 
+    padding: 12px; 
+    font-weight: 600; 
+    font-size: 14px; 
+    color: var(--text-main);
 }
 
-table tr:hover{
+td { padding: 10px; border-bottom: 1px solid var(--border-color); }
 
-background:#f8fafc;
-
+td input, td select {
+    width: 100%;
+    background: transparent;
+    border: none;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-main);
 }
 
-/* ================= INPUT TABELA ================= */
-
-td input,
-td select{
-
-width:100%;
-
-background:transparent;
-
-border:none;
-
-text-align:center;
-
+/* ================= RESUMO & BOXES ================= */
+.resumo-topo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
 }
 
-/* ================= RESUMO ================= */
-
-.resumo-topo{
-
-display:flex;
-
-gap:10px;
-
-margin-top:15px;
-
+.resumo-box {
+    flex: 1 1 120px;
+    background: var(--resumo-bg);
+    padding: 15px;
+    border-radius: 10px;
+    border: 1px solid var(--border-color);
+    transition: 0.3s;
 }
 
-.resumo-box{
+.resumo-box span { display: block; font-size: 12px; color: var(--text-muted); text-transform: uppercase; }
+.resumo-box strong { font-size: 18px; display: block; margin-top: 5px; }
 
-flex:1;
+.pagamento-box { border-left: 4px solid #f97316; }
+.adiantamento-box { border-left: 4px solid #fb923c; }
 
-background:#f8fafc;
-
-padding:15px;
-
-border-radius:10px;
-
-border:1px solid #e2e8f0;
-
+/* ================= BARRAS DE LIMITE ================= */
+.bloco-limite {
+    background: var(--resumo-bg);
+    padding: 15px;
+    margin-top: 15px;
+    border-radius: 10px;
+    border-left: 4px solid #f97316;
+    text-align: left;
 }
 
-.resumo-box span{
-
-display:block;
-
-font-size:13px;
-
-opacity:0.7;
-
+.barra-container {
+    width: 100%;
+    height: 18px;
+    background: var(--border-color);
+    border-radius: 10px;
+    margin: 8px 0;
+    overflow: hidden;
 }
 
-.resumo-box strong{
-
-font-size:20px;
-
+.barra {
+    height: 100%;
+    font-size: 10px;
+    color: white;
+    text-align: center;
+    line-height: 18px;
+    transition: 0.5s width ease-in-out;
 }
 
-/* ================= CORES ENTRADAS ================= */
-
-.pagamento-box{
-
-border-left:4px solid #f97316;
-
-}
-
-.adiantamento-box{
-
-border-left:4px solid #fb923c;
-
-}
-
-/* ================= LIMITES ================= */
-
-.bloco-limite{
-
-background:#f8fafc;
-
-padding:15px;
-
-margin-top:15px;
-
-border-radius:10px;
-
-border-left:4px solid #f97316;
-
-text-align:left;
-
-}
-
-/* ================= BARRAS ================= */
-
-.barra-container{
-
-width:100%;
-
-height:20px;
-
-background:#e2e8f0;
-
-border-radius:10px;
-
-margin:8px 0;
-
-overflow:hidden;
-
-}
-
-.barra{
-
-height:100%;
-
-border-radius:10px;
-
-font-size:11px;
-
-color:white;
-
-line-height:20px;
-
-transition:0.3s;
-
-}
-
-.verde{
-
-background:linear-gradient(90deg,#22c55e,#4ade80);
-
-}
-
-.vermelho{
-
-background:linear-gradient(90deg,#ef4444,#f87171);
-
-}
-
-/* ================= MINI GRAFICO ================= */
-
-.grafico{
-
-display:flex;
-
-height:25px;
-
-border-radius:10px;
-
-overflow:hidden;
-
-margin:15px 0;
-
-background:#e2e8f0;
-
-}
-
-.barra-grafico{
-
-height:100%;
-
-font-size:12px;
-
-line-height:25px;
-
-color:white;
-
-}
-
-.barra-grafico.pagamento{
-
-background:#f97316;
-
-}
-
-.barra-grafico.adiantamento{
-
-background:#fb923c;
-
-}
+.verde { background: linear-gradient(90deg, #22c55e, #4ade80); }
+.vermelho { background: linear-gradient(90deg, #ef4444, #f87171); }
 
 /* ================= SELEÇÃO DE MÊS ================= */
-
-.mes-card{
-
-width:85%;
-
-margin:20px auto;
-
+.mes-botoes {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 10px 5px;
+    scroll-behavior: smooth;
 }
 
-/* barra horizontal */
+.mes-botoes::-webkit-scrollbar { display: none; }
 
-.mes-botoes{
-
-display:flex;
-
-gap:10px;
-
-overflow-x:auto;
-
-padding:10px;
-
-scroll-behavior:smooth;
-
+.mes-btn {
+    flex: 0 0 auto;
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-card);
+    color: var(--text-muted);
+    border-radius: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.3s;
 }
 
-.mes-botoes::-webkit-scrollbar{
-
-display:none;
-
+.mes-btn.ativo {
+    background: #f97316;
+    color: white;
+    border-color: #f97316;
 }
 
-/* botão mês */
-
-
-
-/* hover */
-
-.mes-btn:hover{
-
-background:#fff7ed;
-border-color:#f97316;
-color:#ea580c;
-
+/* ================= BOTÕES FLUTUANTES (FIXOS) ================= */
+.dashboard-float, .btn-salvar-float, .btn-dark-float {
+    position: fixed;
+    right: 20px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    cursor: pointer;
+    z-index: 1000;
+    transition: 0.3s;
+    border: none;
 }
 
-/* mês ativo */
-
-.mes-btn.ativo{
-
-background:#f97316;
-color:white;
-border:none;
-
+/* Botão Dark Mode (Acima de todos) */
+.btn-dark-float {
+    bottom: 170px;
+    background: #334155;
+    color: #fbbf24;
+    font-size: 24px;
 }
 
-/* ================= DASHBOARD BOTÃO ================= */
-
-.dashboard-float{
-
-position:fixed;
-
-bottom:25px;
-
-right:25px;
-
-width:70px;
-
-height:70px;
-
-border-radius:50%;
-
-background:#f97316;
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
-font-size:26px;
-
-cursor:pointer;
-
-box-shadow:0 15px 30px rgba(0,0,0,0.2);
-
-transition:0.2s;
-
-z-index:1000;
-
+/* Salvar (Azul) */
+.btn-salvar-float {
+    bottom: 95px;
+    background: #0ea5e9;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1.1;
+    flex-direction: column;
 }
 
-.dashboard-float:hover{
-
-transform:scale(1.1);
-
+/* Dashboard (Laranja) */
+.dashboard-float {
+    bottom: 20px;
+    background: #f97316;
+    font-size: 24px;
+    color: white;
 }
+
+.dashboard-float:hover, .btn-salvar-float:hover, .btn-dark-float:hover { transform: scale(1.1); }
 
 /* ================= MODAL DASHBOARD ================= */
-
-.dashboard-modal{
-
-position:fixed;
-
-inset:0;
-
-background:rgba(0,0,0,0.6);
-
-display:flex;
-
-justify-content:center;
-
-align-items:center;
-
-opacity:0;
-
-pointer-events:none;
-
-transition:0.3s;
-
+.dashboard-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: 0.3s;
+    z-index: 2000;
 }
 
-.dashboard-modal.ativo{
+.dashboard-modal.ativo { opacity: 1; pointer-events: auto; }
 
-opacity:1;
-
-pointer-events:auto;
-
+.dashboard-conteudo {
+    background: var(--bg-card);
+    color: var(--text-main);
+    width: 95%;
+    max-width: 700px;
+    height: 85vh;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-/* ================= CONTEUDO MODAL ================= */
-
-.dashboard-conteudo{
-
-position:relative;
-
-width:650px;
-
-max-width:90%;
-
-background:white;
-
-border-radius:16px;
-
-padding:30px;
-
-box-shadow:0 30px 80px rgba(0,0,0,0.2);
-
-transform:scale(0.8);
-
-transition:0.3s;
-
+.dashboard-header {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.dashboard-modal.ativo .dashboard-conteudo{
-
-transform:scale(1);
-
+/* ================= BOTÃO ADICIONAR ================= */
+.card button[onclick="adicionar()"] {
+    display: flex;
+    margin: 20px auto 10px auto;
+    background: #f97316;
+    color: white;
+    border: none;
+    padding: 12px 40px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
+    transition: all 0.3s ease;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
-/* ================= BOTÃO FECHAR ================= */
-
-.fechar-dashboard{
-
-position:absolute;
-
-top:15px;
-
-right:15px;
-
-width:35px;
-
-height:35px;
-
-border-radius:50%;
-
-border:none;
-
-background:#ef4444;
-
-color:white;
-
-font-size:18px;
-
-cursor:pointer;
-
-display:flex;
-
-align-items:center;
-
-justify-content:center;
-
+.card button[onclick="adicionar()"]:hover {
+    background: #ea580c;
+    transform: scale(1.05);
 }
 
-.fechar-dashboard:hover{
-
-background:#dc2626;
-
-}
-
-/* ===== DASHBOARD MODAL ===== */
-
-.dashboard-modal{
-
-position:fixed;
-top:0;
-left:0;
-width:100%;
-height:100%;
-
-background:rgba(0,0,0,0.6);
-
-display:flex;
-align-items:center;
-justify-content:center;
-
-opacity:0;
-pointer-events:none;
-
-transition:0.3s;
-
-}
-
-.dashboard-modal.ativo{
-
-opacity:1;
-pointer-events:auto;
-
-}
-
-
-/* ===== CONTEUDO ===== */
-
-.dashboard-conteudo{
-
-background:white;
-
-width:90%;
-max-width:800px;
-
-height:85vh;
-
-border-radius:15px;
-
-display:flex;
-flex-direction:column;
-
-box-shadow:0 20px 60px rgba(0,0,0,0.3);
-
-}
-
-
-/* ===== HEADER ===== */
-
-.dashboard-header{
-
-display:flex;
-justify-content:space-between;
-align-items:center;
-
-padding:20px;
-
-border-bottom:1px solid #eee;
-
-}
-
-
-/* ===== BOTAO FECHAR ===== */
-
-.fechar-dashboard{
-
-background:#ef4444;
-color:white;
-
-border:none;
-
-width:35px;
-height:35px;
-
-border-radius:50%;
-
-font-size:18px;
-
-cursor:pointer;
-
-transition:0.2s;
-
-}
-
-.fechar-dashboard:hover{
-
-background:#dc2626;
-transform:scale(1.1);
-
-}
-
-
-/* ===== CORPO (SCROLL) ===== */
-
-.dashboard-body{
-
-overflow-y:auto;
-
-padding:20px;
-
-}
-
-
-/* ===== GRAFICOS ===== */
-
-.dashboard-body canvas{
-
-margin-bottom:40px;
-
+.card button[onclick="adicionar()"]::before {
+    content: "+";
+    font-size: 20px;
+    font-weight: bold;
 }

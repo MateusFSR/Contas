@@ -28,29 +28,11 @@
                 <button class="mes-btn" onclick="mudarMes('Novembro')">Novembro</button>
                 <button class="mes-btn" onclick="mudarMes('Dezembro')">Dezembro</button>
             </div>
-            <input type="hidden" id="filtroMes" value="Julho">
-        </div>
-
-        <div class="bank-card">
-            <h3 class="bank-label">Novo Lançamento</h3>
-            <div class="form-container">
-                <input id="desc" type="text" placeholder="Descrição">
-                <input id="valor" type="number" step="0.01" placeholder="Valor (R$)">
-                <select id="cat">
-                    <option value="Entrada">💰 Entrada</option>
-                    <option value="Necessidades">🏠 Necessidades</option>
-                    <option value="Pessoal">🛒 Pessoal</option>
-                    <option value="Guardar">🏦 Guardar</option>
-                </select>
-                <select id="origem">
-                    <option value="Pagamento">💳 Pagamento</option>
-                    <option value="Adiantamento">💵 Adiantamento</option>
-                </select>
-                <button class="btn-primary" onclick="adicionar()">Adicionar</button>
-            </div>
+            <input type="hidden" id="filtroMes" value="">
         </div>
 
         <div id="resumo"></div>
+
         <div id="lista"></div>
 
         <footer class="bank-footer">

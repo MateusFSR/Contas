@@ -190,23 +190,28 @@ function editarCampo(index, campo, novoValor) {
 // ==========================================================================
 function render() {
     const mesesAno = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    
+    if (!document.getElementById("filtroMes").value) {
+        document.getElementById("filtroMes").value = mesesAno[new Date().getMonth()];
+    }
+
     const mesAtualNome = document.getElementById("filtroMes").value;
     const indexMesAtual = mesesAno.indexOf(mesAtualNome);
-    
     const lista = document.getElementById("lista");
     const resumo = document.getElementById("resumo");
 
     if (!dados[mesAtualNome]) dados[mesAtualNome] = [];
 
     let totalEntradas = 0, totalSaidas = 0, pagIn = 0, adiIn = 0;
+    let limiteUsadoNoMes = 0;
     
-    // Acumuladores para as barras de Metas do mês atual
+    // Acumuladores para as metas
     let gastos = {
         Pagamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 },
         Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
     };
 
-    // 1. Cálculo do Mês Atual (Saldos e Metas)
+    // 1. Processamento dos Lançamentos
     dados[mesAtualNome].forEach(item => {
         if (item.cat === "Entrada") {
             totalEntradas += item.valor;
@@ -214,29 +219,41 @@ function render() {
             if (item.desc.toLowerCase().includes("adiantamento")) adiIn += item.valor;
         } else {
             totalSaidas += item.valor;
-            let ori = item.origem || "Pagamento";
-            if (gastos[ori] && gastos[ori][item.cat] !== undefined) {
-                gastos[ori][item.cat] += item.valor;
+            
+            // LÓGICA DE CRÉDITO: Abate do Limite Garantido (Caixinha)
+            if (item.origem === "Crédito") {
+                limiteUsadoNoMes += item.valor;
+                
+                /* DETERMINAR DE ONDE ABATE NA META:
+                   Como o crédito não tem "origem salarial", vamos abater 
+                   proporcionalmente ou da meta de 'Pagamento' por padrão 
+                   para que a barra de 'Pessoal' (do print) se mova.
+                */
+                if (gastos.Pagamento[item.cat] !== undefined) {
+                    gastos.Pagamento[item.cat] += item.valor;
+                }
+            } else {
+                // Lógica normal para Pagamento e Adiantamento
+                let ori = item.origem || "Pagamento";
+                if (gastos[ori] && gastos[ori][item.cat] !== undefined) {
+                    gastos[ori][item.cat] += item.valor;
+                }
             }
         }
     });
 
-    // 2. Lógica da "Caixinha" (Soma de todos os meses até o atual)
+    // 2. Cálculo da Caixinha (Histórico)
     let totalCaixinhaHistorico = 0;
-    
-    // Percorre de Janeiro (index 0) até o mês selecionado (indexMesAtual)
     for (let i = 0; i <= indexMesAtual; i++) {
-        const nomeDoMes = mesesAno[i];
-        if (dados[nomeDoMes]) {
-            dados[nomeDoMes].forEach(item => {
-                if (item.cat === "Guardar") {
-                    totalCaixinhaHistorico += item.valor;
-                }
-            });
+        const nomeM = mesesAno[i];
+        if (dados[nomeM]) {
+            dados[nomeM].forEach(item => { if (item.cat === "Guardar") totalCaixinhaHistorico += item.valor; });
         }
     }
 
-    // 3. Montagem do HTML
+    const limiteDisponivel = totalCaixinhaHistorico - limiteUsadoNoMes;
+
+    // 3. HTML do Resumo (Saldos e Novo Lançamento)
     resumo.innerHTML = `
         <div class="bank-grid">
             <div class="bank-card full" style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
@@ -245,13 +262,13 @@ function render() {
                     <strong class="bank-value" id="vTotal">R$ 0,00</strong>
                 </div>
                 <div style="flex: 1;">
-                    <span class="bank-label">Caixinha</span>
-                    <strong class="bank-value" style="font-size: 24px;">
-                        R$ ${totalCaixinhaHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    <span class="bank-label">Limite Disponível (Caixinha)</span>
+                    <strong class="bank-value" style="font-size: 24px; color: ${limiteDisponivel < 0 ? '#ff4d4d' : 'inherit'}">
+                        R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
+                    <small style="display:block; color:var(--inter-gray); font-size:10px; margin-top:4px">Total Acumulado: R$ ${totalCaixinhaHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</small>
                 </div>
             </div>
-
             <div class="bank-card half">
                 <span class="bank-label">Saldo Pagamento</span>
                 <strong class="bank-value sub" id="vPag">R$ 0,00</strong>
@@ -276,6 +293,7 @@ function render() {
                 <select id="origem">
                     <option value="Pagamento">💳 Pagamento</option>
                     <option value="Adiantamento">💵 Adiantamento</option>
+                    <option value="Crédito">✨ Crédito</option>
                 </select>
                 <button class="btn-primary" onclick="adicionar()">Adicionar</button>
             </div>
@@ -343,8 +361,7 @@ function render() {
 
     // Atualiza botões de meses
     document.querySelectorAll(".mes-btn").forEach(btn => {
-        const clickAttr = btn.getAttribute("onclick");
-        btn.classList.toggle("ativo", clickAttr && clickAttr.includes(`'${mesAtualNome}'`));
+        btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome);
     });
 
     animarValoresTela(totalEntradas - totalSaidas, pagIn, adiIn);

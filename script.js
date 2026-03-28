@@ -241,7 +241,13 @@ function render() {
 
     if (!dados[mesAtualNome]) dados[mesAtualNome] = [];
 
-    // Lógica de cálculos
+    // Ajuste de margem dinâmica para o cabeçalho
+    const header = document.querySelector(".bank-header-main");
+    const container = document.querySelector(".container");
+    if (header && container) {
+        container.style.marginTop = (header.offsetHeight + 10) + "px";
+    }
+
     let totalEntradas = 0, totalSaidas = 0, pagIn = 0, adiIn = 0;
     let limiteUsadoNoMes = 0;
     
@@ -286,32 +292,36 @@ function render() {
     const porcentagemGastoLimite = totalCaixinhaHistorico > 0 ? (limiteUsadoNoMes / totalCaixinhaHistorico) * 100 : 0;
     const estiloBrilho = porcentagemGastoLimite >= 90 ? `box-shadow: 0 0 15px #ff4d4d; animation: pulseGlow 1.5s infinite alternate;` : '';
 
-    // 1. Renderização do Painel de Resumo e Cards de Saldo
+    // --- A MÁGICA DAS CORES ADAPTÁVEIS ---
+    // Se a variável --text-color não existir, ele usa o padrão do navegador
+    const corDinamica = "var(--text-color, inherit)"; 
+    const corSuave = "var(--inter-gray, #888)";
+
     resumo.innerHTML = `
     <div class="bank-grid">
         <div class="bank-card full no-padding">
             <div style="padding: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px;">
                 <div style="flex: 1; min-width: 200px; border-right: 1px solid rgba(128,128,128,0.2); padding-right: 20px;" class="res-border-none">
-                    <span class="bank-label">SALDO TOTAL EM CONTA</span>
-                    <strong class="bank-value" id="vTotal" style="display: block; font-size: 28px; margin: 5px 0; color: var(--text-color, inherit);">R$ 0,00</strong>
+                    <span class="bank-label" style="color: ${corSuave}">SALDO TOTAL EM CONTA</span>
+                    <strong class="bank-value" id="vTotal" style="display: block; font-size: 28px; margin: 5px 0; color: ${corDinamica};">R$ 0,00</strong>
                     
                     <div style="display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;">
                         <button onclick="abrirModal()" style="background: none; border: none; color: var(--inter-orange); font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
                             <span style="font-size: 18px; line-height: 0; margin-top: -2px;">›</span> novo lançamento
                         </button>
-                        <button onclick="toggleMetasFlutuante()" style="background: none; border: none; color: #888; font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
+                        <button onclick="toggleMetasFlutuante()" style="background: none; border: none; color: ${corSuave}; font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
                             <span style="font-size: 14px; line-height: 0;">📊</span> ver metas
                         </button>
                     </div>
                 </div>
                 
                 <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
-                    <span class="bank-label">LIMITE DISPONÍVEL (CAIXINHA)</span>
-                    <strong class="bank-value" style="font-size: 24px; margin: 5px 0; color: ${limiteDisponivel < 0 ? '#ff4d4d' : 'var(--text-color, inherit)'}">
+                    <span class="bank-label" style="color: ${corSuave}">LIMITE DISPONÍVEL (CAIXINHA)</span>
+                    <strong class="bank-value" style="font-size: 24px; margin: 5px 0; color: ${limiteDisponivel < 0 ? '#ff4d4d' : corDinamica}">
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
-                    <div style="width: 100%; max-width: 220px; height: 6px; background: #2ECC71; border-radius: 3px; position: relative; margin-top: 10px;">
-                        <div style="width: ${Math.min(porcentagemGastoLimite, 100)}%; height: 100%; background: #ff4d4d; border-radius: 3px; transition: width 0.5s ease; ${estiloBrilho}"></div>
+                    <div style="width: 100%; max-width: 220px; height: 6px; background: rgba(46, 204, 113, 0.2); border-radius: 3px; position: relative; margin-top: 10px;">
+                        <div style="width: ${Math.min(porcentagemGastoLimite, 100)}%; height: 100%; background: #2ECC71; border-radius: 3px; transition: width 0.5s ease; ${estiloBrilho}"></div>
                     </div>
                 </div>
             </div>
@@ -319,21 +329,21 @@ function render() {
 
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; width: 100%; margin-top: 10px;">
             <div class="bank-card" style="padding: 10px 15px; min-height: auto;">
-                <span class="bank-label" style="font-size: 9px; margin-bottom: 2px;">SALDO PAGAMENTO</span>
-                <strong class="bank-value" id="vPag" style="font-size: 16px; color: var(--text-color, inherit);">R$ 0,00</strong>
+                <span class="bank-label" style="font-size: 9px; margin-bottom: 2px; color: ${corSuave}">SALDO PAGAMENTO</span>
+                <strong class="bank-value" id="vPag" style="font-size: 16px; color: ${corDinamica};">R$ 0,00</strong>
             </div>
             <div class="bank-card" style="padding: 10px 15px; min-height: auto;">
-                <span class="bank-label" style="font-size: 9px; margin-bottom: 2px;">SALDO ADIANTAMENTO</span>
-                <strong class="bank-value" id="vAdi" style="font-size: 16px; color: var(--text-color, inherit);">R$ 0,00</strong>
+                <span class="bank-label" style="font-size: 9px; margin-bottom: 2px; color: ${corSuave}">SALDO ADIANTAMENTO</span>
+                <strong class="bank-value" id="vAdi" style="font-size: 16px; color: ${corDinamica};">R$ 0,00</strong>
             </div>
         </div>
     </div>
 
     <div id="modalMetas" class="modal-overlay" style="display:none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:20000; justify-content:center; align-items:center; backdrop-filter: blur(8px); padding: 15px;">
-        <div class="bank-card" style="width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative; padding: clamp(15px, 5vw, 35px); border: 1px solid #333; border-radius: 20px; background: var(--card-bg, #1a1a1a);">
-            <button onclick="toggleMetasFlutuante()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-color, #fff); font-size: 28px; cursor: pointer;">&times;</button>
-            <h3 style="margin-bottom: 25px; color: var(--inter-orange); font-size: 18px;">📊 Planejamento de Metas</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: clamp(20px, 5vw, 40px);">
+        <div class="bank-card" style="width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; position: relative; padding: 30px; border-radius: 20px;">
+            <button onclick="toggleMetasFlutuante()" style="position: absolute; top: 15px; right: 15px; background: none; border: none; color: ${corDinamica}; font-size: 28px; cursor: pointer;">&times;</button>
+            <h3 style="margin-bottom: 25px; color: var(--inter-orange); font-size: 18px; font-weight: 300;">📊 Planejamento de Metas</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 40px;">
                 ${renderizarBlocoMeta("Do Pagamento", pagIn, gastosMeta.Pagamento)}
                 ${renderizarBlocoMeta("Do Adiantamento", adiIn, gastosMeta.Adiantamento)}
             </div>
@@ -341,17 +351,17 @@ function render() {
     </div>
     `;
 
-    // 2. Tabela com Suporte a Reordenação Manual
+    // Extrato com Handle (≡)
     let htmlTabela = `
         <div class="bank-card" style="margin-top:20px">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="font-size: 14px;">Extrato Detalhado</h3>
-                <span style="color:var(--inter-gray); font-size:12px">${dados[mesAtualNome].length} lançamentos</span>
+                <h3 style="font-size: 14px; font-weight: 400; color: ${corDinamica}">Extrato Detalhado</h3>
+                <span style="color:${corSuave}; font-size:11px">${dados[mesAtualNome].length} transações</span>
             </div>
             <div class="bank-table-container" style="overflow-x: auto;">
                 <table class="bank-table" style="min-width: 450px;">
                     <thead>
-                        <tr style="text-align:left; color:var(--inter-gray); font-size:11px; text-transform: uppercase;">
+                        <tr style="text-align:left; color:${corSuave}; font-size:10px; text-transform: uppercase; letter-spacing: 1px;">
                             <th style="padding:10px">Descrição</th>
                             <th style="padding:10px">Valor</th>
                             <th style="padding:10px">Categoria</th>
@@ -363,21 +373,21 @@ function render() {
     dados[mesAtualNome].forEach((item, i) => {
         htmlTabela += `
             <tr data-id="${i}">
-                <td><input class="input-transparente" style="width: 100%" value="${item.desc}" onchange="editarCampo(${i}, 'desc', this.value)"></td>
+                <td><input class="input-transparente" style="width: 100%; color: ${corDinamica}" value="${item.desc}" onchange="editarCampo(${i}, 'desc', this.value)"></td>
                 <td class="${item.cat === 'Entrada' ? 'txt-green' : 'txt-red'}">
-                    R$ <input type="number" step="0.01" class="input-transparente" style="width:70px" value="${item.valor}" onchange="editarCampo(${i}, 'valor', this.value)">
+                    R$ <input type="number" step="0.01" class="input-transparente" style="width:70px; color: inherit" value="${item.valor}" onchange="editarCampo(${i}, 'valor', this.value)">
                 </td>
                 <td>
-                    <select class="input-transparente" onchange="editarCampo(${i}, 'cat', this.value); render();">
+                    <select class="input-transparente" style="color: ${corDinamica}" onchange="editarCampo(${i}, 'cat', this.value); render();">
                         <option value="Entrada" ${item.cat === 'Entrada' ? 'selected' : ''}>Entrada</option>
                         <option value="Necessidades" ${item.cat === 'Necessidades' ? 'selected' : ''}>Necessidades</option>
                         <option value="Pessoal" ${item.cat === 'Pessoal' ? 'selected' : ''}>Pessoal</option>
                         <option value="Guardar" ${item.cat === 'Guardar' ? 'selected' : ''}>Guardar</option>
                     </select>
                 </td>
-                <td style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px;">
-                    <span class="handle" style="cursor: grab; color: var(--inter-gray); font-size: 20px; user-select: none;">≡</span>
-                    <button onclick="remover(${i})" class="btn-clear" style="cursor:pointer; padding: 5px;">✕</button>
+                <td style="display: flex; align-items: center; justify-content: center; gap: 15px; padding: 10px;">
+                    <span class="handle" style="cursor: grab; color: ${corSuave}; font-size: 18px; user-select: none;">≡</span>
+                    <button onclick="remover(${i})" class="btn-clear" style="cursor:pointer; color: ${corSuave};">✕</button>
                 </td>
             </tr>`;
     });
@@ -385,13 +395,8 @@ function render() {
     htmlTabela += `</tbody></table></div></div>`;
     lista.innerHTML = htmlTabela;
 
-    // 3. Inicialização de Componentes e Animações
     if (typeof initSortable === "function") initSortable();
-    
-    document.querySelectorAll(".mes-btn").forEach(btn => {
-        btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome);
-    });
-
+    document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome));
     animarValoresTela(totalEntradas - totalSaidas, pagIn, adiIn);
 }
 

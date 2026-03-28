@@ -1,353 +1,472 @@
-/* ================= VARIÁVEIS DE CORES (TEMA) ================= */
+/* ==========================================================================
+   VARIAVEIS E TEMA (PALETA BANCO INTER)
+   ========================================================================== */
 :root {
-    --bg-body: linear-gradient(180deg, #f8fafc, #eef2f7);
-    --bg-card: white;
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --border-color: #e2e8f0;
-    --input-bg: white;
-    --resumo-bg: #f8fafc;
-    --shadow: rgba(0, 0, 0, 0.08);
+    --inter-orange: #FF7A00;
+    --inter-orange-hover: #E66E00;
+    --inter-bg: #F5F6FA;
+    --inter-card: #FFFFFF;
+    --inter-text: #2D3436;
+    --inter-gray: #888888;
+    --inter-border: #E0E0E0;
+    --green: #2ECC71;
+    --red: #E74C3C;
+    --blue: #3b82f6;
+    --shadow: 0 10px 25px rgba(0,0,0,0.05);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Cores para o Modo Escuro */
 body.dark-mode {
-    --bg-body: #0f172a; /* Azul marinho muito escuro */
-    --bg-card: #1e293b; /* Azul metálico escuro */
-    --text-main: #f1f5f9; /* Branco acinzentado */
-    --text-muted: #94a3b8;
-    --border-color: #334155;
-    --input-bg: #0f172a;
-    --resumo-bg: #111827;
-    --shadow: rgba(0, 0, 0, 0.4);
+    --inter-bg: #121212;
+    --inter-card: #1E1E1E;
+    --inter-text: #F5F6FA;
+    --inter-border: #333333;
+    --inter-gray: #AAAAAA;
 }
 
-/* ================= BASE & RESET ================= */
-body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg-body);
-    color: var(--text-main);
-    margin: 0;
-    padding-bottom: 100px;
-    text-align: center;
-    transition: background 0.3s ease, color 0.3s ease;
-}
-
-/* ================= TITULOS ================= */
-h1 { margin-top: 30px; font-weight: 600; }
-h2 { font-size: 18px; color: #f97316; margin-bottom: 15px; }
-h3 { color: #f97316; margin-top: 10px; }
-
-/* ================= CARD (RESPONSIVO) ================= */
-.card {
-    background: var(--bg-card);
-    border-radius: 16px;
-    padding: 15px;
-    margin: 15px auto;
-    width: 95%;
-    max-width: 900px;
-    box-shadow: 0 10px 30px var(--shadow);
-    border: 1px solid var(--border-color);
-    transition: 0.25s;
+/* ==========================================================================
+   RESET E CONFIGURAÇÕES GERAIS
+   ========================================================================== */
+* {
     box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-@media (min-width: 768px) {
-    .card { width: 85%; padding: 25px; }
+body {
+    background-color: var(--inter-bg);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--inter-text);
+    line-height: 1.6;
+    padding: 20px;
+    transition: var(--transition);
 }
 
-.card:hover { transform: translateY(-3px); }
-
-/* ================= FORMULÁRIO (ADAPTÁVEL) ================= */
-.form-linha {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 10px;
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding-bottom: 120px;
 }
 
-@media (min-width: 600px) {
-    .form-linha { flex-direction: row; }
+h2, h3, h4 {
+    margin-bottom: 15px;
+    font-weight: 700;
 }
 
-.form-linha input, .form-linha select {
-    flex: 1;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
-    background: var(--input-bg);
-    color: var(--text-main);
-    font-size: 16px;
-    transition: 0.3s;
+/* ==========================================================================
+   CARDS E LAYOUT DE GRADE
+   ========================================================================== */
+.bank-card {
+    background: var(--inter-card);
+    padding: 25px;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--inter-border);
+    margin-bottom: 25px;
+    transition: var(--transition);
+}
+
+.bank-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+}
+
+.bank-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.bank-card.full {
+    grid-column: 1 / span 2;
+    border-left: 8px solid var(--inter-orange);
+}
+
+/* ==========================================================================
+   ELEMENTOS DE VALOR E LABELS
+   ========================================================================== */
+.bank-label {
+    display: block;
+    color: var(--inter-gray);
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.bank-value {
+    display: block;
+    font-size: 32px;
+    font-weight: 800;
+    color: var(--inter-orange);
+}
+
+.bank-value.sub {
+    font-size: 24px;
+    color: var(--inter-text);
+}
+
+/* ==========================================================================
+   FORMULÁRIO DE ADICIONAR
+   ========================================================================== */
+.form-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 15px;
+}
+
+input, select {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 12px;
+    border: 1px solid var(--inter-border);
+    background: var(--inter-bg);
+    color: var(--inter-text);
+    font-family: inherit;
+    font-size: 14px;
+    transition: var(--transition);
 }
 
 input:focus, select:focus {
     outline: none;
-    border: 1px solid #f97316;
-    box-shadow: 0 0 0 2px rgba(249,115,22,0.2);
+    border-color: var(--inter-orange);
+    box-shadow: 0 0 0 3px rgba(255, 122, 0, 0.1);
 }
 
-/* ================= TABELA ================= */
-#lista {
-    width: 100%;
+.btn-primary {
+    background: var(--inter-orange);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-primary:hover {
+    background: var(--inter-orange-hover);
+    transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   EXTRATO / TABELA DE LANÇAMENTOS
+   ========================================================================== */
+.bank-table-container {
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
 }
 
-table {
+.bank-table {
     width: 100%;
-    min-width: 600px;
-    margin-top: 15px;
     border-collapse: collapse;
 }
 
-th { 
-    background: var(--resumo-bg); 
-    padding: 12px; 
-    font-weight: 600; 
-    font-size: 14px; 
-    color: var(--text-main);
+.bank-table tr {
+    border-bottom: 1px solid var(--inter-border);
 }
 
-td { padding: 10px; border-bottom: 1px solid var(--border-color); }
+.bank-table td {
+    padding: 18px 10px;
+    font-size: 15px;
+}
 
-td input, td select {
-    width: 100%;
-    background: transparent;
+.input-transparente {
     border: none;
-    text-align: center;
-    font-size: 14px;
-    color: var(--text-main);
-}
-
-/* ================= RESUMO & BOXES ================= */
-.resumo-topo {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.resumo-box {
-    flex: 1 1 120px;
-    background: var(--resumo-bg);
-    padding: 15px;
-    border-radius: 10px;
-    border: 1px solid var(--border-color);
-    transition: 0.3s;
-}
-
-.resumo-box span { display: block; font-size: 12px; color: var(--text-muted); text-transform: uppercase; }
-.resumo-box strong { font-size: 18px; display: block; margin-top: 5px; }
-
-.pagamento-box { border-left: 4px solid #f97316; }
-.adiantamento-box { border-left: 4px solid #fb923c; }
-
-/* ================= BARRAS DE LIMITE ================= */
-.bloco-limite {
-    background: var(--resumo-bg);
-    padding: 15px;
-    margin-top: 15px;
-    border-radius: 10px;
-    border-left: 4px solid #f97316;
-    text-align: left;
-}
-
-.barra-container {
+    background: transparent;
+    font-weight: 500;
+    color: inherit;
     width: 100%;
-    height: 18px;
-    background: var(--border-color);
-    border-radius: 10px;
-    margin: 8px 0;
-    overflow: hidden;
 }
 
-.barra {
-    height: 100%;
-    font-size: 10px;
-    color: white;
-    text-align: center;
-    line-height: 18px;
-    transition: 0.5s width ease-in-out;
+.txt-green { color: var(--green); font-weight: 700; }
+.txt-red { color: var(--red); font-weight: 700; }
+
+.btn-clear {
+    background: none;
+    border: none;
+    color: var(--inter-gray);
+    font-size: 18px;
+    cursor: pointer;
+    transition: var(--transition);
 }
 
-.verde { background: linear-gradient(90deg, #22c55e, #4ade80); }
-.vermelho { background: linear-gradient(90deg, #ef4444, #f87171); }
+.btn-clear:hover {
+    color: var(--red);
+    transform: scale(1.2);
+}
 
-/* ================= SELEÇÃO DE MÊS ================= */
-.mes-botoes {
+/* ==========================================================================
+   FILTROS DE MÊS (SCROLL HORIZONTAL)
+   ========================================================================== */
+.meses-scroll {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     overflow-x: auto;
-    padding: 10px 5px;
-    scroll-behavior: smooth;
+    padding-bottom: 15px;
+    scrollbar-width: none;
 }
 
-.mes-botoes::-webkit-scrollbar { display: none; }
+.meses-scroll::-webkit-scrollbar {
+    display: none;
+}
 
 .mes-btn {
-    flex: 0 0 auto;
-    padding: 8px 16px;
-    border: 1px solid var(--border-color);
-    background: var(--bg-card);
-    color: var(--text-muted);
-    border-radius: 20px;
+    padding: 10px 22px;
+    background: var(--inter-card);
+    border: 1px solid var(--inter-border);
+    border-radius: 25px;
+    cursor: pointer;
     white-space: nowrap;
-    cursor: pointer;
-    font-size: 14px;
-    transition: 0.3s;
+    font-weight: 600;
+    color: var(--inter-text);
+    transition: var(--transition);
 }
 
-.mes-btn.ativo {
-    background: #f97316;
-    color: white;
-    border-color: #f97316;
+.mes-btn.ativo, 
+body.dark-mode .mes-btn.ativo {
+    background-color: var(--inter-orange) !important;
+    color: white !important;
+    border-color: var(--inter-orange) !important;
+    box-shadow: 0 4px 10px rgba(255, 122, 0, 0.3);
+    opacity: 1;
 }
 
-/* ================= BOTÕES FLUTUANTES (FIXOS) ================= */
-.dashboard-float, .btn-salvar-float, .btn-dark-float {
-    position: fixed;
-    right: 20px;
-    width: 65px;
-    height: 65px;
-    border-radius: 50%;
+/* Feedback visual ao apertar o botão */
+.mes-btn:active {
+    transform: scale(0.95);
+}
+
+/* ==========================================================================
+   BARRAS DE PROGRESSO (METAS) - IGUAL AO CÓDIGO 1
+   ========================================================================== */
+.meta-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.meta-col h5 {
+    color: var(--inter-orange);
+    margin-bottom: 20px;
+    font-size: 16px;
+    border-left: 4px solid var(--inter-orange);
+    padding-left: 10px;
+}
+
+.bank-progress-container {
+    margin-bottom: 25px;
+}
+
+.progress-labels {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    cursor: pointer;
-    z-index: 1000;
-    transition: 0.3s;
-    border: none;
+    justify-content: space-between;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 8px;
 }
 
-/* Botão Dark Mode (Acima de todos) */
-.btn-dark-float {
-    bottom: 170px;
-    background: #334155;
-    color: #fbbf24;
-    font-size: 24px;
-}
-
-/* Salvar (Azul) */
-.btn-salvar-float {
-    bottom: 95px;
-    background: #0ea5e9;
-    color: white;
-    font-size: 10px;
-    font-weight: bold;
-    text-align: center;
-    line-height: 1.1;
-    flex-direction: column;
-}
-
-/* Dashboard (Laranja) */
-.dashboard-float {
-    bottom: 20px;
-    background: #f97316;
-    font-size: 24px;
-    color: white;
-}
-
-.dashboard-float:hover, .btn-salvar-float:hover, .btn-dark-float:hover { transform: scale(1.1); }
-
-/* ================= MODAL DASHBOARD ================= */
-.dashboard-modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    opacity: 0;
-    pointer-events: none;
-    transition: 0.3s;
-    z-index: 2000;
-}
-
-.dashboard-modal.ativo { opacity: 1; pointer-events: auto; }
-
-.dashboard-conteudo {
-    background: var(--bg-card);
-    color: var(--text-main);
-    width: 95%;
-    max-width: 700px;
-    height: 85vh;
-    border-radius: 20px;
-    display: flex;
-    flex-direction: column;
+.bank-progress-bg {
+    height: 12px;
+    background: #E0E0E0;
+    border-radius: 6px;
     overflow: hidden;
 }
 
-.dashboard-header {
-    padding: 15px 20px;
+body.dark-mode .bank-progress-bg {
+    background: #333;
+}
+
+.bank-progress-fill {
+    height: 100%;
+    background: var(--inter-orange);
+    border-radius: 6px;
+    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+small {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    border-bottom: 1px solid var(--border-color);
+    margin-top: 5px;
+    color: var(--inter-gray);
+    font-size: 11px;
 }
 
-/* ================= BOTÃO ADICIONAR ================= */
-.card button[onclick="adicionar()"] {
+/* ==========================================================================
+   BOTÕES FLUTUANTES (DIREITA)
+   ========================================================================== */
+.floating-group {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
     display: flex;
-    margin: 20px auto 10px auto;
-    background: #f97316;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1000;
+}
+
+.btn-float {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--inter-card);
+    border: 1px solid var(--inter-border);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--inter-text);
+    transition: var(--transition);
+}
+
+.btn-float:hover {
+    transform: scale(1.1) translateX(-5px);
+    border-color: var(--inter-orange);
+}
+
+.btn-float .icon {
+    font-size: 22px;
+}
+
+.btn-float small {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    margin-top: 2px;
+}
+
+.btn-float.btn-save-main {
+    background: var(--inter-orange);
     color: white;
     border: none;
-    padding: 12px 40px;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 4px 15px rgba(249, 115, 22, 0.3);
-    transition: all 0.3s ease;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
+    width: 75px;
+    height: 75px;
 }
 
-.card button[onclick="adicionar()"]:hover {
-    background: #ea580c;
-    transform: scale(1.05);
+.btn-float.btn-save-main:hover {
+    background: var(--inter-orange-hover);
+    box-shadow: 0 10px 25px rgba(255, 122, 0, 0.4);
 }
 
-.card button[onclick="adicionar()"]::before {
-    content: "+";
-    font-size: 20px;
-    font-weight: bold;
-}
-
-/* ================= RODAPÉ DE DADOS ================= */
-.rodape-dados {
+/* ==========================================================================
+   RODAPÉ (UTILITÁRIOS EXCEL)
+   ========================================================================== */
+.bank-footer {
+    margin-top: 60px;
+    padding: 40px 0;
+    border-top: 1px solid var(--inter-border);
     display: flex;
     justify-content: center;
-    gap: 15px;
-    padding: 20px;
-    margin-top: 30px;
-    border-top: 1px solid var(--border-color);
-    background: var(--bg-card);
+    gap: 20px;
+    flex-wrap: wrap;
 }
 
-.btn-dados {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border-color);
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
+.btn-action {
+    background: var(--inter-card);
+    border: 1px solid var(--inter-border);
+    padding: 12px 25px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: 0.3s;
-    display: inline-block;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--inter-text);
+    transition: var(--transition);
 }
 
-.btn-dados:hover {
-    background: var(--resumo-bg);
-    color: #f97316;
-    border-color: #f97316;
+.btn-action:hover {
+    border-color: var(--inter-orange);
+    background: var(--inter-bg);
 }
 
-/* Ajuste no padding do body para não cobrir o rodapé novo */
-body {
-    padding-bottom: 150px; 
+/* ==========================================================================
+   MODAL DASHBOARD
+   ========================================================================== */
+#dashboardModal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(5px);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+#dashboardModal.ativo {
+    display: flex;
+}
+
+.modal-content {
+    background: var(--inter-card);
+    width: 90%;
+    max-width: 850px;
+    max-height: 90vh;
+    border-radius: 30px;
+    padding: 40px;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+}
+
+.close-modal {
+    position: absolute;
+    top: 20px; right: 25px;
+    font-size: 32px;
+    cursor: pointer;
+    color: var(--inter-gray);
+}
+
+.graficos-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-top: 20px;
+}
+
+.chart-box {
+    background: var(--inter-bg);
+    padding: 20px;
+    border-radius: 20px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   RESPONSIVIDADE
+   ========================================================================== */
+@media (max-width: 768px) {
+    .bank-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .bank-card.half {
+        grid-column: span 1;
+    }
+
+    .meta-container {
+        grid-template-columns: 1fr;
+    }
+
+    .bank-value {
+        font-size: 28px;
+    }
+
+    .floating-group {
+        right: 15px;
+        bottom: 15px;
+    }
+
+    .btn-float {
+        width: 55px;
+        height: 55px;
+    }
+
+    .modal-content {
+        padding: 20px;
+    }
 }

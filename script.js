@@ -1,7 +1,7 @@
 // ================= CONFIGURAÇÃO SUPABASE =================
-const SUPABASE_URL = "https://amqbggvxcyutlzubadio.supabase.co"; // Ex: https://xyz.supabase.co
+const SUPABASE_URL = "https://amqbggvxcyutlzubadio.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtcWJnZ3Z4Y3l1dGx6dWJhZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.PtlDWAmK7wCmFAs4QZIv3CSnlbqS11v8DCXw6K7NTvg"; 
-const NOME_USUARIO = "mateusfsr"; // Identificador único para seus dados
+const NOME_USUARIO = "mateusfsr";
 
 // ================= DADOS INICIAIS =================
 let dadosPadrao = {
@@ -11,10 +11,7 @@ let dadosPadrao = {
   ]
 };
 
-// Tenta carregar do LocalStorage apenas como fallback imediato
 let dados = JSON.parse(localStorage.getItem("dados")) || dadosPadrao;
-
-// Instâncias Globais dos Gráficos (para destruí-los antes de redesenhar)
 let grafDistribuicao, grafCategoria, grafLimite;
 
 // ================= SINCRONIZAÇÃO COM O BANCO (SUPABASE) =================
@@ -22,7 +19,7 @@ let grafDistribuicao, grafCategoria, grafLimite;
 async function carregarDadosDoBanco() {
   console.log("Conectando ao banco de dados...");
   const btnSalvar = document.getElementById("btnSalvar");
-  if(btnSalvar) btnSalvar.style.display = "block"; // Garante que o botão de salvar apareça
+  if(btnSalvar) btnSalvar.style.display = "block";
 
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}&select=dados_json`, {
@@ -49,19 +46,17 @@ async function carregarDadosDoBanco() {
 async function salvarNoBanco() {
   const btn = document.getElementById("btnSalvar");
   if (btn) {
-    btn.innerHTML = "⏳<br>Salvando"; // Usando <br> para quebrar o texto no círculo
+    btn.innerHTML = "⏳<br>Salvando";
     btn.disabled = true;
   }
 
   try {
-    // 1. Verifica se já existe um registro para este usuário
     const verificar = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}`, {
         headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
     });
     const existe = await verificar.json();
 
     let res;
-    // 2. Se existe, atualiza (PATCH). Se não, cria (POST).
     if (existe && existe.length > 0) {
       res = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}`, {
         method: 'PATCH',
@@ -103,13 +98,13 @@ async function salvarNoBanco() {
   }
 }
 
-// ================= LOGIN (Se houver) =================
+// ================= LOGIN =================
 function login() {
   const user = document.getElementById("usuario").value;
   const pass = document.getElementById("senha").value;
 
   if (user === "MateusFSR" && pass === "mateus21") {
-    window.location.href = "dashboard.html"; // Redireciona para onde o sistema estiver
+    window.location.href = "dashboard.html";
   } else {
     document.getElementById("erro").innerText = "Login inválido!";
   }
@@ -121,7 +116,6 @@ function abrirDashboard() {
   const modal = document.getElementById("dashboardModal");
   if (modal) {
     modal.classList.add("ativo");
-    // Renderiza os gráficos somente quando o modal abrir
     renderizarGraficosDashboard();
   }
 }
@@ -133,7 +127,6 @@ function fecharDashboard() {
   }
 }
 
-// Fecha o modal se o usuário clicar fora do conteúdo branco
 window.onclick = function(event) {
   const modal = document.getElementById("dashboardModal");
   if (event.target == modal) {
@@ -147,7 +140,6 @@ function renderizarGraficosDashboard() {
   const mes = document.getElementById("filtroMes").value;
   const dadosMes = dados[mes] || [];
 
-  // 1. Cálculos de Dados
   let totalPagamentoIn = 0;
   let totalAdiantamentoIn = 0;
   let gastosPorCategoria = { Necessidades: 0, Pessoal: 0, Guardar: 0 };
@@ -166,17 +158,14 @@ function renderizarGraficosDashboard() {
   });
 
   const totalEntradaValida = totalPagamentoIn + totalAdiantamentoIn;
-  // Meta de gasto (70% das entradas) e meta de guardar (30%)
   const metaGastoTotal = totalEntradaValida * 0.7;
 
-  // 2. Configurações de Cores
   const coresCategoriass = {
-    Necessidades: '#f97316', // Laranja
-    Pessoal: '#3b82f6',     // Azul
-    Guardar: '#10b981'      // Verde
+    Necessidades: '#f97316',
+    Pessoal: '#3b82f6',
+    Guardar: '#10b981'
   };
 
-  // --- GRÁFICO 1: DISTRIBUIÇÃO DE ENTRADAS (PIZZA) ---
   if (grafDistribuicao) grafDistribuicao.destroy();
   const ctx1 = document.getElementById('graficoDistribuicao');
   if (ctx1) {
@@ -186,17 +175,16 @@ function renderizarGraficosDashboard() {
         labels: ['Pagamento', 'Adiantamento'],
         datasets: [{
           data: [totalPagamentoIn, totalAdiantamentoIn],
-          backgroundColor: [coresCategoriass.Necessidades, '#fdb17d'] // Laranja forte, laranja claro
+          backgroundColor: [coresCategoriass.Necessidades, '#fdb17d']
         }]
       },
       options: {
         plugins: { legend: { position: 'bottom' } },
-        aspectRatio: 1.5 // Deixa o gráfico mais compacto
+        aspectRatio: 1.5
       }
     });
   }
 
-  // --- GRÁFICO 2: GASTOS POR CATEGORIA (BARRA VERTICAL) ---
   if (grafCategoria) grafCategoria.destroy();
   const ctx2 = document.getElementById('graficoCategoria');
   if (ctx2) {
@@ -215,19 +203,18 @@ function renderizarGraficosDashboard() {
         }]
       },
       options: {
-        indexAxis: 'y', // Barra Horizontal
+        indexAxis: 'y',
         plugins: { legend: { display: false } },
         scales: { x: { beginAtZero: true, ticks: { callback: value => 'R$ ' + value } } }
       }
     });
   }
 
-  // --- GRÁFICO 3: LIMITE UTILIZADO (BARRA HORIZONTAL DUPLA) ---
   if (grafLimite) grafLimite.destroy();
   const ctx3 = document.getElementById('graficoLimite');
   if (ctx3) {
     const percUtilizado = metaGastoTotal ? (totalGeralGasto / metaGastoTotal) * 100 : 0;
-    const corBarraUtilizado = percUtilizado > 100 ? '#ef4444' : coresCategoriass.Guardar; // Vermelho se estourar
+    const corBarraUtilizado = percUtilizado > 100 ? '#ef4444' : coresCategoriass.Guardar;
 
     grafLimite = new Chart(ctx3, {
       type: 'bar',
@@ -237,7 +224,7 @@ function renderizarGraficosDashboard() {
           {
             label: 'Meta Máxima',
             data: [metaGastoTotal],
-            backgroundColor: '#e2e8f0', // Cinza de fundo
+            backgroundColor: '#e2e8f0',
             barThickness: 30
           },
           {
@@ -249,7 +236,7 @@ function renderizarGraficosDashboard() {
         ]
       },
       options: {
-        indexAxis: 'y', // Barra Horizontal
+        indexAxis: 'y',
         plugins: {
           legend: { position: 'bottom' },
           tooltip: {
@@ -287,7 +274,6 @@ function adicionar() {
   localStorage.setItem("dados", JSON.stringify(dados));
   render();
 
-  // Limpa os campos
   document.getElementById("desc").value = "";
   document.getElementById("valor").value = "";
 }
@@ -365,7 +351,6 @@ function render() {
   lista.innerHTML = html;
   ativarDrag();
 
-  // Cálculos de Resumo (Metas 40/30/30)
   const metas = (v) => ({ Necessidades: v * 0.4, Pessoal: v * 0.3, Guardar: v * 0.3 });
   let mPag = metas(pagamentoIn);
   let mAdi = metas(adiantamentoIn);
@@ -398,7 +383,6 @@ function render() {
     </div>
   </div>`;
 
-  // Animação dos valores (com pequeno delay para o HTML carregar)
   setTimeout(() => {
     animarValor("totalGeral", entrada);
     animarValor("vPag", pagamentoIn);
@@ -437,7 +421,7 @@ function animarValor(id, valorFinal) {
   if (!el) return;
   
   let atual = 0;
-  let incremento = valorFinal / 30; // 30 passos
+  let incremento = valorFinal / 30;
   if(valorFinal === 0) { el.innerText = "R$ 0"; return; }
 
   let intervalo = setInterval(() => {
@@ -453,14 +437,10 @@ function animarValor(id, valorFinal) {
 function mudarMes(mes){
   const mesFiltroEl = document.getElementById("filtroMes");
   if(mesFiltroEl) mesFiltroEl.value = mes;
-
   document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.remove("ativo"));
-  
-  // Encontra e ativa o botão correto
   document.querySelectorAll(".mes-btn").forEach(btn => {
       if(btn.innerText === mes) btn.classList.add("ativo");
   });
-
   render();
 }
 
@@ -486,33 +466,20 @@ function ativarDrag() {
             novaLista.push(dados[mes][indexOriginal]);
         });
         dados[mes] = novaLista;
-        
-        // Redesenha para atualizar os data-index
         render();
     });
   });
 }
 
-// Função para exportar que estava em branco
-function exportarExcel() {
-    alert("🚀 Função de exportar Excel ainda não implementada, mas o botão funciona!");
-}
-
 function toggleDarkMode() {
     const body = document.body;
     const btn = document.getElementById("btnDarkMode");
-    
     body.classList.toggle("dark-mode");
-    
-    // Salva a preferência
     const isDark = body.classList.contains("dark-mode");
     localStorage.setItem("dark-mode", isDark);
-    
-    // Altera o ícone
     btn.innerText = isDark ? "☀️" : "🌙";
 }
 
-// Carregar preferência ao abrir o site
 window.addEventListener("load", () => {
     if (localStorage.getItem("dark-mode") === "true") {
         document.body.classList.add("dark-mode");
@@ -520,5 +487,75 @@ window.addEventListener("load", () => {
     }
 });
 
+// ================= EXPORTAR / IMPORTAR XLSX (CONSOLIDADO) =================
+
+function exportarExcel() {
+    if (typeof XLSX === 'undefined') {
+        alert("Erro: Biblioteca de exportação não carregada.");
+        return;
+    }
+
+    // Como o seu objeto 'dados' é separado por meses, vamos achatar para uma lista única
+    let listaParaExportar = [];
+    for (let mes in dados) {
+        dados[mes].forEach(item => {
+            listaParaExportar.push({ Mês: mes, ...item });
+        });
+    }
+
+    if (listaParaExportar.length === 0) {
+        alert("Não há dados para exportar!");
+        return;
+    }
+
+    try {
+        const ws = XLSX.utils.json_to_sheet(listaParaExportar);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Controle Financeiro");
+        XLSX.writeFile(wb, `Financeiro_Completo.xlsx`);
+    } catch (error) {
+        console.error("Erro ao exportar:", error);
+        alert("Ocorreu um erro ao gerar o arquivo Excel.");
+    }
+}
+
+function importarExcel(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            
+            if(confirm(`Deseja importar ${jsonData.length} registros? Isso substituirá os dados atuais.`)) {
+                // Organiza os dados achatados de volta para o formato de meses do sistema
+                let novosDados = {};
+                jsonData.forEach(item => {
+                    const mes = item.Mês || "Janeiro";
+                    if (!novosDados[mes]) novosDados[mes] = [];
+                    
+                    // Remove a propriedade Mês para não poluir o objeto interno
+                    let itemFormatado = {...item};
+                    delete itemFormatado.Mês;
+                    novosDados[mes].push(itemFormatado);
+                });
+
+                dados = novosDados;
+                localStorage.setItem("dados", JSON.stringify(dados));
+                render();
+                alert("Dados importados com sucesso!");
+            }
+        } catch (error) {
+            alert("Erro ao ler o arquivo Excel. Verifique o formato.");
+            console.error(error);
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 // ================= INICIALIZAÇÃO =================
-// carregarDadosDoBanco já é chamado pelo body onload no HTML
+// carregarDadosDoBanco() deve ser chamado no final ou via HTML

@@ -548,3 +548,19 @@ small {
     color: #fff;
     font-size: 16px;
 }
+
+/* Container da barra dentro do card */
+.progress-bar-container {
+    width: 100%; /* Ocupa todo o espaço disponível no card */
+    max-width: fit-content; /* Garante que ela não ultrapasse o texto mais longo */
+}
+
+@keyframes pulseGlow {
+    from {
+        box-shadow: 0 0 5px #ff4d4d;
+    }
+    to {
+        box-shadow: 0 0 15px #ff4d4d, 0 0 20px rgba(255, 77, 77, 0.4);
+    }
+}
+

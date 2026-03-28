@@ -189,25 +189,25 @@ function editarCampo(index, campo, novoValor) {
 // INTERFACE E RENDERIZAÇÃO (ESTILO BANCO INTER)
 // ==========================================================================
 function render() {
-    const mes = document.getElementById("filtroMes").value;
+    const mesesAno = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    const mesAtualNome = document.getElementById("filtroMes").value;
+    const indexMesAtual = mesesAno.indexOf(mesAtualNome);
+    
     const lista = document.getElementById("lista");
     const resumo = document.getElementById("resumo");
 
-    if (!dados[mes]) dados[mes] = [];
+    if (!dados[mesAtualNome]) dados[mesAtualNome] = [];
 
-    let totalEntradas = 0;
-    let totalSaidas = 0;
-    let pagIn = 0;
-    let adiIn = 0;
+    let totalEntradas = 0, totalSaidas = 0, pagIn = 0, adiIn = 0;
     
-    // Acumuladores para Metas
+    // Acumuladores para as barras de Metas do mês atual
     let gastos = {
         Pagamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 },
         Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
     };
 
-    // Processamento dos dados do mês
-    dados[mes].forEach(item => {
+    // 1. Cálculo do Mês Atual (Saldos e Metas)
+    dados[mesAtualNome].forEach(item => {
         if (item.cat === "Entrada") {
             totalEntradas += item.valor;
             if (item.desc.toLowerCase().includes("pagamento")) pagIn += item.valor;
@@ -219,19 +219,39 @@ function render() {
                 gastos[ori][item.cat] += item.valor;
             }
         }
-    document.querySelectorAll(".mes-btn").forEach(btn => {
-    const mesAtual = document.getElementById("filtroMes").value;
-    btn.classList.toggle("ativo", btn.getAttribute("onclick").includes(`'${mesAtual}'`));
-  });    
     });
 
-    // Atualização do Resumo (Boxes Separadas)
+    // 2. Lógica da "Caixinha" (Soma de todos os meses até o atual)
+    let totalCaixinhaHistorico = 0;
+    
+    // Percorre de Janeiro (index 0) até o mês selecionado (indexMesAtual)
+    for (let i = 0; i <= indexMesAtual; i++) {
+        const nomeDoMes = mesesAno[i];
+        if (dados[nomeDoMes]) {
+            dados[nomeDoMes].forEach(item => {
+                if (item.cat === "Guardar") {
+                    totalCaixinhaHistorico += item.valor;
+                }
+            });
+        }
+    }
+
+    // 3. Montagem do HTML
     resumo.innerHTML = `
         <div class="bank-grid">
-            <div class="bank-card full">
-                <span class="bank-label">Saldo Total em Conta</span>
-                <strong class="bank-value" id="vTotal">R$ 0,00</strong>
+            <div class="bank-card full" style="display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                <div style="flex: 1; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 20px;">
+                    <span class="bank-label">Saldo Total em Conta</span>
+                    <strong class="bank-value" id="vTotal">R$ 0,00</strong>
+                </div>
+                <div style="flex: 1;">
+                    <span class="bank-label">Caixinha</span>
+                    <strong class="bank-value" style="font-size: 24px;">
+                        R$ ${totalCaixinhaHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </strong>
+                </div>
             </div>
+
             <div class="bank-card half">
                 <span class="bank-label">Saldo Pagamento</span>
                 <strong class="bank-value sub" id="vPag">R$ 0,00</strong>
@@ -239,6 +259,25 @@ function render() {
             <div class="bank-card half">
                 <span class="bank-label">Saldo Adiantamento</span>
                 <strong class="bank-value sub" id="vAdi">R$ 0,00</strong>
+            </div>
+        </div>
+
+        <div class="bank-card">
+            <h3 class="bank-label">Novo Lançamento</h3>
+            <div class="form-container">
+                <input id="desc" type="text" placeholder="Descrição">
+                <input id="valor" type="number" step="0.01" placeholder="Valor (R$)">
+                <select id="cat">
+                    <option value="Entrada">💰 Entrada</option>
+                    <option value="Necessidades">🏠 Necessidades</option>
+                    <option value="Pessoal">🛒 Pessoal</option>
+                    <option value="Guardar">🏦 Guardar</option>
+                </select>
+                <select id="origem">
+                    <option value="Pagamento">💳 Pagamento</option>
+                    <option value="Adiantamento">💵 Adiantamento</option>
+                </select>
+                <button class="btn-primary" onclick="adicionar()">Adicionar</button>
             </div>
         </div>
 
@@ -261,28 +300,28 @@ function render() {
         </div>
     `;
 
-    // Renderização da Tabela
+    // 4. Renderização da Tabela de Extrato
     let htmlTabela = `
         <div class="bank-card">
-            <div style="display:flex; justify-content:space-between; align-items:center">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
                 <h3>Extrato Detalhado</h3>
-                <span style="color:var(--inter-gray); font-size:12px">${dados[mes].length} lançamentos</span>
+                <span style="color:var(--inter-gray); font-size:12px">${dados[mesAtualNome].length} lançamentos</span>
             </div>
             <div class="bank-table-container">
-                <table class="bank-table" id="tabelaDrag">
+                <table class="bank-table">
                     <thead>
-                        <tr style="text-align:left; color:var(--inter-gray); font-size:12px">
-                            <th style="padding:10px">DESCRIÇÃO</th>
-                            <th style="padding:10px">VALOR</th>
-                            <th style="padding:10px">CATEGORIA</th>
-                            <th style="padding:10px">AÇÃO</th>
+                        <tr style="text-align:left; color:var(--inter-gray); font-size:11px; text-transform: uppercase; letter-spacing: 1px;">
+                            <th style="padding:10px">Descrição</th>
+                            <th style="padding:10px">Valor</th>
+                            <th style="padding:10px">Categoria</th>
+                            <th style="padding:10px">Ação</th>
                         </tr>
                     </thead>
                     <tbody>`;
 
-    dados[mes].forEach((item, i) => {
+    dados[mesAtualNome].forEach((item, i) => {
         htmlTabela += `
-            <tr draggable="true" data-index="${i}">
+            <tr>
                 <td><input class="input-transparente" value="${item.desc}" onchange="editarCampo(${i}, 'desc', this.value)"></td>
                 <td class="${item.cat === 'Entrada' ? 'txt-green' : 'txt-red'}">
                     R$ <input type="number" step="0.01" class="input-transparente" style="width:80px" value="${item.valor}" onchange="editarCampo(${i}, 'valor', this.value)">
@@ -295,15 +334,19 @@ function render() {
                         <option value="Guardar" ${item.cat === 'Guardar' ? 'selected' : ''}>Guardar</option>
                     </select>
                 </td>
-                <td><button onclick="remover(${i})" class="btn-clear">✕</button></td>
+                <td><button onclick="remover(${i})" class="btn-clear" style="cursor:pointer">✕</button></td>
             </tr>`;
     });
 
     htmlTabela += `</tbody></table></div></div>`;
     lista.innerHTML = htmlTabela;
 
-    // Disparar funções auxiliares
-    ativarDragAndDrop();
+    // Atualiza botões de meses
+    document.querySelectorAll(".mes-btn").forEach(btn => {
+        const clickAttr = btn.getAttribute("onclick");
+        btn.classList.toggle("ativo", clickAttr && clickAttr.includes(`'${mesAtualNome}'`));
+    });
+
     animarValoresTela(totalEntradas - totalSaidas, pagIn, adiIn);
 }
 
@@ -527,3 +570,37 @@ function toggleDarkMode() {
     const isDark = document.body.classList.toggle("dark-mode");
     localStorage.setItem("darkMode", isDark);
 }
+
+// Função para inicializar o sistema no mês correto
+function inicializarSistema() {
+    const mesesAno = [
+        "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", 
+        "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+    ];
+
+    // 1. Detecta o mês atual do sistema (0 = Jan, 2 = Mar, etc.)
+    const dataHoje = new Date();
+    const nomeMesAtual = mesesAno[dataHoje.getMonth()];
+
+    // 2. Atualiza o input que o render() usa para filtrar os dados
+    const filtroInput = document.getElementById("filtroMes");
+    if (filtroInput) {
+        filtroInput.value = nomeMesAtual;
+    }
+
+    // 3. Renderiza a tela com os dados do mês atual
+    render();
+
+    // 4. Garante que o botão do mês atual fique com a cor laranja (classe ativo)
+    document.querySelectorAll(".mes-btn").forEach(btn => {
+        // Remove 'ativo' de todos primeiro
+        btn.classList.remove("ativo");
+        // Se o texto do botão for igual ao mês atual, adiciona 'ativo'
+        if (btn.innerText.trim() === nomeMesAtual) {
+            btn.classList.add("ativo");
+        }
+    });
+}
+
+// Executa assim que a página terminar de carregar
+window.addEventListener('load', inicializarSistema);

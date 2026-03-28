@@ -470,3 +470,34 @@ small {
         padding: 20px;
     }
 }
+
+.display-flex-row {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.info-bloco {
+    flex: 1;
+}
+
+.border-orange {
+    border-right: 2px solid var(--inter-orange);
+    padding-right: 20px;
+}
+
+/* Ajuste para mobile */
+@media (max-width: 600px) {
+    .display-flex-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .border-orange {
+        border-right: none;
+        border-bottom: 2px solid var(--inter-orange);
+        padding-right: 0;
+        padding-bottom: 15px;
+        width: 100%;
+    }
+}

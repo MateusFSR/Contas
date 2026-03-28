@@ -14,14 +14,14 @@
     <main class="container">
         <div class="bank-card">
             <h3 class="bank-label">Selecionar Período</h3>
-            <div class="meses-scroll">
+            <div class="meses-scroll" id="menuMeses">
                 <button class="mes-btn" onclick="mudarMes('Janeiro')">Janeiro</button>
                 <button class="mes-btn" onclick="mudarMes('Fevereiro')">Fevereiro</button>
                 <button class="mes-btn" onclick="mudarMes('Março')">Março</button>
                 <button class="mes-btn" onclick="mudarMes('Abril')">Abril</button>
                 <button class="mes-btn" onclick="mudarMes('Maio')">Maio</button>
                 <button class="mes-btn" onclick="mudarMes('Junho')">Junho</button>
-                <button class="mes-btn ativo" onclick="mudarMes('Julho')">Julho</button>
+                <button class="mes-btn" onclick="mudarMes('Julho')">Julho</button>
                 <button class="mes-btn" onclick="mudarMes('Agosto')">Agosto</button>
                 <button class="mes-btn" onclick="mudarMes('Setembro')">Setembro</button>
                 <button class="mes-btn" onclick="mudarMes('Outubro')">Outubro</button>
@@ -32,30 +32,20 @@
         </div>
 
         <div id="resumo"></div>
-
         <div id="lista"></div>
 
         <footer class="bank-footer">
-            <button class="btn-action" onclick="exportarExcel()">
-                <span class="icon">📊</span> Exportar Excel
-            </button>
-            <label for="importarFile" class="btn-action">
-                <span class="icon">📥</span> Importar Excel
-            </label>
+            <button class="btn-action" onclick="exportarExcel()">📊 Exportar Excel</button>
+            <label for="importarFile" class="btn-action">📥 Importar Excel</label>
             <input type="file" id="importarFile" accept=".xlsx, .xls, .csv" onchange="importarExcel(this)" style="display: none;">
         </footer>
     </main>
 
     <div class="floating-group">
-        <button class="btn-float" onclick="toggleDarkMode()" title="Modo Escuro">
-            <span class="icon">🌙</span>
-        </button>
-        <button class="btn-float" onclick="abrirDashboard()" title="Ver Dashboard">
-            <span class="icon">📈</span>
-        </button>
+        <button class="btn-float" onclick="toggleDarkMode()" title="Modo Escuro">🌙</button>
+        <button class="btn-float" onclick="abrirDashboard()" title="Ver Dashboard">📈</button>
         <button class="btn-float btn-save-main" id="btnSalvar" onclick="salvarNoBanco()" title="Salvar na Nuvem">
-            <span class="icon">☁️</span>
-            <small>Salvar</small>
+            ☁️ <small>Salvar</small>
         </button>
     </div>
 

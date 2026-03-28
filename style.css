@@ -671,3 +671,66 @@ small {
     to { box-shadow: 0 0 15px #ff4d4d, 0 0 20px rgba(255, 77, 77, 0.4); }
 }
 
+/* --- CABEÇALHO PREMIUM MINIMALISTA --- */
+.bank-header-main {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: #121212; /* Fundo preto profundo */
+    border-bottom: 1px solid #222;
+    z-index: 1000;
+    padding: 15px 0;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.bank-header-main .header-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.bank-icon {
+    color: var(--inter-orange, #ff7a00);
+    font-size: 18px;
+    filter: drop-shadow(0 0 5px var(--inter-orange));
+}
+
+.bank-header-main h1 {
+    font-size: 22px; 
+    font-weight: 300; /* Fonte fina = mais elegante */
+    margin: 0;
+    color: #fff;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.5px;
+}
+
+.user-badge {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: rgba(46, 204, 113, 0.1);
+    color: #2ecc71;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(46, 204, 113, 0.3);
+}
+
+/* Ajuste Mobile */
+@media (max-width: 600px) {
+    .bank-header-main h1 {
+        font-size: 18px;
+    }
+    .user-badge {
+        display: none; /* Esconde o badge no celular pra não poluir */
+    }
+}

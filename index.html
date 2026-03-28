@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <title>Controle Financeiro Pro</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
-<body onload="carregarDadosDoBanco()">
+<body>
 
     <div class="card">
         <h2>Selecionar Mês</h2>
@@ -52,12 +53,14 @@
     <div id="resumo"></div>
     <div id="lista"></div>
 
-    <button onclick="toggleDarkMode()" id="btnDarkMode" class="btn-dark-float">🌙</button>
-    
-    <button onclick="salvarNoBanco()" id="btnSalvar" class="btn-salvar-float">
-        ☁️<br>Salvar
-    </button>
+    <div class="rodape-dados">
+        <button onclick="exportarExcel()" class="btn-dados">📤 Exportar Excel</button>
+        <label for="importarFile" class="btn-dados">📥 Importar Excel</label>
+        <input type="file" id="importarFile" accept=".xlsx, .xls, .csv" onchange="importarExcel(this)" style="display: none;">
+    </div>
 
+    <button onclick="toggleDarkMode()" id="btnDarkMode" class="btn-dark-float">🌙</button>
+    <button onclick="salvarNoBanco()" id="btnSalvar" class="btn-salvar-float">☁️<br>Salvar</button>
     <div class="dashboard-float" onclick="abrirDashboard()">📊</div>
 
     <div id="dashboardModal" class="dashboard-modal">
@@ -67,12 +70,7 @@
                 <button class="fechar-dashboard" onclick="fecharDashboard()">✕</button>
             </div>
             <div class="dashboard-body">
-                <h3>Distribuição de Entradas</h3>
-                <canvas id="graficoDistribuicao"></canvas>
-                <h3>Gastos por Categoria</h3>
                 <canvas id="graficoCategoria"></canvas>
-                <h3>Limite Utilizado (70%)</h3>
-                <canvas id="graficoLimite"></canvas>
             </div>
         </div>
     </div>

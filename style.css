@@ -316,3 +316,38 @@ td input, td select {
     font-size: 20px;
     font-weight: bold;
 }
+
+/* ================= RODAPÉ DE DADOS ================= */
+.rodape-dados {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    padding: 20px;
+    margin-top: 30px;
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-card);
+}
+
+.btn-dados {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: 0.3s;
+    display: inline-block;
+}
+
+.btn-dados:hover {
+    background: var(--resumo-bg);
+    color: #f97316;
+    border-color: #f97316;
+}
+
+/* Ajuste no padding do body para não cobrir o rodapé novo */
+body {
+    padding-bottom: 150px; 
+}

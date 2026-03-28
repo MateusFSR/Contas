@@ -367,4 +367,3 @@ function ativarDrag() {
 }
 
 // ================= INICIALIZAÇÃO =================
-window.onload = carregarDadosDoBanco;

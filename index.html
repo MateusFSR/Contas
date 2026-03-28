@@ -1,168 +1,82 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-
 <head>
-
-<meta charset="UTF-8">
-<title>Controle Financeiro</title>
-
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<link rel="stylesheet" href="style.css">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <meta charset="UTF-8">
+    <title>Controle Financeiro Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-
-
 <body onload="carregarDadosDoBanco()">
 
-
-<!-- ================= MÊS ================= -->
-
-<div class="card mes-card">
-
-<h2>Selecionar Mês</h2>
-
-<div class="mes-botoes">
-
-<button class="mes-btn" onclick="mudarMes('Janeiro')">Janeiro</button>
-<button class="mes-btn" onclick="mudarMes('Fevereiro')">Fevereiro</button>
-<button class="mes-btn" onclick="mudarMes('Março')">Março</button>
-<button class="mes-btn" onclick="mudarMes('Abril')">Abril</button>
-<button class="mes-btn" onclick="mudarMes('Maio')">Maio</button>
-<button class="mes-btn" onclick="mudarMes('Junho')">Junho</button>
-
-<button class="mes-btn ativo" onclick="mudarMes('Julho')">Julho</button>
-
-<button class="mes-btn" onclick="mudarMes('Agosto')">Agosto</button>
-<button class="mes-btn" onclick="mudarMes('Setembro')">Setembro</button>
-<button class="mes-btn" onclick="mudarMes('Outubro')">Outubro</button>
-<button class="mes-btn" onclick="mudarMes('Novembro')">Novembro</button>
-<button class="mes-btn" onclick="mudarMes('Dezembro')">Dezembro</button>
-
-</div>
-
-<input type="hidden" id="filtroMes" value="Julho">
-
-</div>
-
-
-
-<!-- ================= ADICIONAR ================= -->
-
-<div class="card">
-
-<h2>Adicionar</h2>
-
-<div class="form-linha">
-
-<input id="desc" placeholder="Descrição">
-
-<input id="valor" type="number" placeholder="Valor">
-
-</div>
-  
-  
-
-
-<div class="form-linha">
-
-<select id="cat">
-
-<option>Entrada</option>
-<option>Necessidades</option>
-<option>Pessoal</option>
-<option>Guardar</option>
-
-</select>
-
-
-<select id="origem">
-
-<option>Pagamento</option>
-<option>Adiantamento</option>
-
-</select>
-
-</div>
-
-<button onclick="adicionar()">Adicionar</button>
-
-</div>
-
-<button onclick="salvarNoBanco()" id="btnSalvar" style="background: #f97316; color: white; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px;">
-  ☁️ Salvar no Banco (Sincronizar)
-</button>
-
-
-<!-- ================= RESUMO ================= -->
-
-<div id="resumo"></div>
-
-
-
-<!-- ================= LISTA ================= -->
-
-<div id="lista"></div>
-
-
-
-<!-- ================= EXPORTAR ================= -->
-
-<div class="card">
-
-<button onclick="exportarExcel()">📥 Exportar Excel</button>
-
-</div>
-
-
-
-<!-- ================= BOTÃO FLUTUANTE ================= -->
-
-<div class="dashboard-float" onclick="abrirDashboard()">
-📊
-</div>
-
-
-
-<!-- ================= MODAL DASHBOARD ================= -->
-
-<div id="dashboardModal" class="dashboard-modal">
-
-<div class="dashboard-conteudo">
-
-<div class="dashboard-header">
-
-<h2>Dashboard Financeiro</h2>
-
-<button class="fechar-dashboard" onclick="fecharDashboard()">✕</button>
-
-</div>
-
-<div class="dashboard-body">
-
-<h3>Distribuição de Entradas</h3>
-<canvas id="graficoDistribuicao"></canvas>
-
-<h3>Gastos por Categoria</h3>
-<canvas id="graficoCategoria"></canvas>
-
-<h3>Limite Utilizado</h3>
-<canvas id="graficoLimite"></canvas>
-
-<h3>Evolução Mensal</h3>
-<canvas id="graficoEvolucao"></canvas>
-
-</div>
-
-</div>
-
-</div>
-
-<script src="script.js"></script>
-
+    <div class="card">
+        <h2>Selecionar Mês</h2>
+        <div class="mes-botoes">
+            <button class="mes-btn" onclick="mudarMes('Janeiro')">Janeiro</button>
+            <button class="mes-btn" onclick="mudarMes('Fevereiro')">Fevereiro</button>
+            <button class="mes-btn" onclick="mudarMes('Março')">Março</button>
+            <button class="mes-btn" onclick="mudarMes('Abril')">Abril</button>
+            <button class="mes-btn" onclick="mudarMes('Maio')">Maio</button>
+            <button class="mes-btn" onclick="mudarMes('Junho')">Junho</button>
+            <button class="mes-btn ativo" onclick="mudarMes('Julho')">Julho</button>
+            <button class="mes-btn" onclick="mudarMes('Agosto')">Agosto</button>
+            <button class="mes-btn" onclick="mudarMes('Setembro')">Setembro</button>
+            <button class="mes-btn" onclick="mudarMes('Outubro')">Outubro</button>
+            <button class="mes-btn" onclick="mudarMes('Novembro')">Novembro</button>
+            <button class="mes-btn" onclick="mudarMes('Dezembro')">Dezembro</button>
+        </div>
+        <input type="hidden" id="filtroMes" value="Julho">
+    </div>
+
+    <div class="card">
+        <h2>Adicionar</h2>
+        <div class="form-linha">
+            <input id="desc" placeholder="Descrição">
+            <input id="valor" type="number" placeholder="Valor">
+        </div>
+        <div class="form-linha">
+            <select id="cat">
+                <option>Entrada</option>
+                <option>Necessidades</option>
+                <option>Pessoal</option>
+                <option>Guardar</option>
+            </select>
+            <select id="origem">
+                <option>Pagamento</option>
+                <option>Adiantamento</option>
+            </select>
+        </div>
+        <button onclick="adicionar()">Adicionar</button>
+    </div>
+
+    <div id="resumo"></div>
+    <div id="lista"></div>
+
+    <button onclick="toggleDarkMode()" id="btnDarkMode" class="btn-dark-float">🌙</button>
+    
+    <button onclick="salvarNoBanco()" id="btnSalvar" class="btn-salvar-float">
+        ☁️<br>Salvar
+    </button>
+
+    <div class="dashboard-float" onclick="abrirDashboard()">📊</div>
+
+    <div id="dashboardModal" class="dashboard-modal">
+        <div class="dashboard-conteudo">
+            <div class="dashboard-header">
+                <h2>Dashboard Financeiro</h2>
+                <button class="fechar-dashboard" onclick="fecharDashboard()">✕</button>
+            </div>
+            <div class="dashboard-body">
+                <h3>Distribuição de Entradas</h3>
+                <canvas id="graficoDistribuicao"></canvas>
+                <h3>Gastos por Categoria</h3>
+                <canvas id="graficoCategoria"></canvas>
+                <h3>Limite Utilizado (70%)</h3>
+                <canvas id="graficoLimite"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
-
 </html>
-

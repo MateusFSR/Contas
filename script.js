@@ -198,11 +198,13 @@ function render() {
     let totalEntradas = 0, totalSaidas = 0, pagIn = 0, adiIn = 0;
     let limiteUsadoNoMes = 0;
     
-    let gastos = {
+    // Objeto para rastrear gastos por meta
+    let gastosMeta = {
         Pagamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 },
         Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
     };
 
+    // 1. Processamento Financeiro
     dados[mesAtualNome].forEach(item => {
         if (item.cat === "Entrada") {
             totalEntradas += item.valor;
@@ -212,14 +214,18 @@ function render() {
             totalSaidas += item.valor;
             if (item.origem === "Crédito") {
                 limiteUsadoNoMes += item.valor;
-                if (gastos.Pagamento[item.cat] !== undefined) gastos.Pagamento[item.cat] += item.valor;
+                // Lógica: Gastos no crédito abatem da meta "Pessoal" do Pagamento
+                gastosMeta.Pagamento.Pessoal += item.valor;
             } else {
                 let ori = item.origem || "Pagamento";
-                if (gastos[ori] && gastos[ori][item.cat] !== undefined) gastos[ori][item.cat] += item.valor;
+                if (gastosMeta[ori] && gastosMeta[ori][item.cat] !== undefined) {
+                    gastosMeta[ori][item.cat] += item.valor;
+                }
             }
         }
     });
 
+    // 2. Cálculos de Limite (Histórico)
     let totalCaixinhaHistorico = 0;
     for (let i = 0; i <= indexMesAtual; i++) {
         const nomeM = mesesAno[i];
@@ -229,88 +235,112 @@ function render() {
     }
 
     const limiteDisponivel = totalCaixinhaHistorico - limiteUsadoNoMes;
+    const porcentagemGastoLimite = totalCaixinhaHistorico > 0 ? (limiteUsadoNoMes / totalCaixinhaHistorico) * 100 : 0;
+    const estiloBrilho = porcentagemGastoLimite >= 90 ? `box-shadow: 0 0 12px #ff4d4d; animation: pulseGlow 1.5s infinite alternate;` : '';
 
+    // 3. Renderização do Resumo Superior
     resumo.innerHTML = `
     <div class="bank-grid">
         <div class="bank-card full no-padding">
-            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+            <div style="padding: 20px; display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
                 <div style="flex: 1; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 20px;">
-                    <span class="bank-label">Saldo Total em Conta</span>
-                    <strong class="bank-value" id="vTotal" style="display: block;">R$ 0,00</strong>
-                    <button onclick="abrirModal()" style="background: none; border: none; color: var(--inter-orange); font-weight: 700; font-size: 12px; cursor: pointer; padding: 5px 0; display: flex; align-items: center; gap: 5px; text-transform: uppercase; margin-top: 5px;">
-                        <span style="font-size: 16px;">+</span> Novo Lançamento
+                    <span class="bank-label">SALDO TOTAL EM CONTA</span>
+                    <strong class="bank-value" id="vTotal" style="display: block; font-size: 28px; margin: 5px 0;">R$ 0,00</strong>
+                    <button onclick="abrirModal()" style="background: none; border: none; color: var(--inter-orange); font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
+                        <span style="font-size: 18px; line-height: 0; margin-top: -2px;">›</span> novo lançamento
                     </button>
                 </div>
-                <div style="flex: 1;">
-                    <span class="bank-label">Limite Disponível (Caixinha)</span>
-                    <strong class="bank-value" style="font-size: 22px; color: ${limiteDisponivel < 0 ? '#ff4d4d' : 'inherit'}">
+                <div style="flex: 1; display: flex; flex-direction: column; align-items: flex-start;">
+                    <span class="bank-label">LIMITE DISPONÍVEL (CAIXINHA)</span>
+                    <strong class="bank-value" style="font-size: 24px; margin: 5px 0; color: ${limiteDisponivel < 0 ? '#ff4d4d' : 'inherit'}">
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
-                    <small style="display:block; color:var(--inter-gray); font-size:10px;">Acumulado: R$ ${totalCaixinhaHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</small>
+                    <small style="display:block; color:var(--inter-gray); font-size:10px; margin-bottom: 8px;">Total Acumulado: R$ ${totalCaixinhaHistorico.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</small>
+                    <div style="width: 100%; max-width: 180px; height: 6px; background: #2ECC71; border-radius: 3px; position: relative;">
+                        <div style="width: ${Math.min(porcentagemGastoLimite, 100)}%; height: 100%; background: #ff4d4d; border-radius: 3px; transition: width 0.5s ease; ${estiloBrilho}"></div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="bank-card half"><span class="bank-label">Saldo Pagamento</span><strong class="bank-value sub" id="vPag">R$ 0,00</strong></div>
-        <div class="bank-card half"><span class="bank-label">Saldo Adiantamento</span><strong class="bank-value sub" id="vAdi">R$ 0,00</strong></div>
+
+        <div class="bank-card half"><span class="bank-label">SALDO PAGAMENTO</span><strong class="bank-value sub" id="vPag">R$ 0,00</strong></div>
+        <div class="bank-card half"><span class="bank-label">SALDO ADIANTAMENTO</span><strong class="bank-value sub" id="vAdi">R$ 0,00</strong></div>
     </div>
 
-    <div class="bank-card">
-        <h4 class="section-title">📊 Metas de Utilização</h4>
-        <div class="meta-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 15px;">
-            <div class="meta-col">
-                <h5 style="margin-bottom: 15px; font-size: 12px; opacity: 0.8;">Do Pagamento (R$ ${pagIn.toFixed(2)})</h5>
-                ${gerarBarraUI("Necessidades", gastos.Pagamento.Necessidades, pagIn * 0.4)}
-                ${gerarBarraUI("Pessoal", gastos.Pagamento.Pessoal, pagIn * 0.3)}
-                ${gerarBarraUI("Guardar", gastos.Pagamento.Guardar, pagIn * 0.3)}
-            </div>
-            <div class="meta-col">
-                <h5 style="margin-bottom: 15px; font-size: 12px; opacity: 0.8;">Do Adiantamento (R$ ${adiIn.toFixed(2)})</h5>
-                ${gerarBarraUI("Necessidades", gastos.Adiantamento.Necessidades, adiIn * 0.4)}
-                ${gerarBarraUI("Pessoal", gastos.Adiantamento.Pessoal, adiIn * 0.3)}
-                ${gerarBarraUI("Guardar", gastos.Adiantamento.Guardar, adiIn * 0.3)}
-            </div>
+    <div class="bank-card" style="margin-top: 20px;">
+        <h3 style="margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 10px;">📊 Metas de Utilização</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+            ${renderizarBlocoMeta("Do Pagamento", pagIn, gastosMeta.Pagamento)}
+            ${renderizarBlocoMeta("Do Adiantamento", adiIn, gastosMeta.Adiantamento)}
         </div>
     </div>
     `;
 
-    let htmlTabela = `
-        <div class="bank-card">
+    // 4. Tabela de Extrato
+    let htmlTabela = `<div class="bank-card" style="margin-top:20px">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px;">
             <h3>Extrato Detalhado</h3>
-            <div class="bank-table-container">
-                <table class="bank-table" id="tabelaDrag">
-                    <thead>
-                        <tr><th>Descrição</th><th>Valor</th><th>Categoria</th><th>Ação</th></tr>
-                    </thead>
-                    <tbody>`;
+            <span style="color:var(--inter-gray); font-size:12px">${dados[mesAtualNome].length} lançamentos</span>
+        </div>
+        <div class="bank-table-container">
+            <table class="bank-table">
+                <thead>
+                    <tr style="text-align:left; color:var(--inter-gray); font-size:11px; text-transform: uppercase;">
+                        <th style="padding:10px">Descrição</th><th style="padding:10px">Valor</th><th style="padding:10px">Categoria</th><th style="padding:10px">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>`;
 
     dados[mesAtualNome].forEach((item, i) => {
-        htmlTabela += `
-            <tr draggable="true" data-index="${i}">
-                <td><input class="input-transparente" value="${item.desc}" onchange="editarCampo(${i}, 'desc', this.value)"></td>
-                <td class="${item.cat === 'Entrada' ? 'txt-green' : 'txt-red'}">
-                    R$ <input type="number" step="0.01" class="input-transparente" style="width:80px" value="${item.valor}" onchange="editarCampo(${i}, 'valor', this.value)">
-                </td>
-                <td>
-                    <select class="input-transparente" onchange="editarCampo(${i}, 'cat', this.value); render();">
-                        <option value="Entrada" ${item.cat === 'Entrada' ? 'selected' : ''}>Entrada</option>
-                        <option value="Necessidades" ${item.cat === 'Necessidades' ? 'selected' : ''}>Necessidades</option>
-                        <option value="Pessoal" ${item.cat === 'Pessoal' ? 'selected' : ''}>Pessoal</option>
-                        <option value="Guardar" ${item.cat === 'Guardar' ? 'selected' : ''}>Guardar</option>
-                    </select>
-                </td>
-                <td><button onclick="remover(${i})" class="btn-clear">✕</button></td>
-            </tr>`;
+        htmlTabela += `<tr>
+            <td><input class="input-transparente" value="${item.desc}" onchange="editarCampo(${i}, 'desc', this.value)"></td>
+            <td class="${item.cat === 'Entrada' ? 'txt-green' : 'txt-red'}">R$ <input type="number" step="0.01" class="input-transparente" style="width:80px" value="${item.valor}" onchange="editarCampo(${i}, 'valor', this.value)"></td>
+            <td>
+                <select class="input-transparente" onchange="editarCampo(${i}, 'cat', this.value); render();">
+                    <option value="Entrada" ${item.cat === 'Entrada' ? 'selected' : ''}>Entrada</option>
+                    <option value="Necessidades" ${item.cat === 'Necessidades' ? 'selected' : ''}>Necessidades</option>
+                    <option value="Pessoal" ${item.cat === 'Pessoal' ? 'selected' : ''}>Pessoal</option>
+                    <option value="Guardar" ${item.cat === 'Guardar' ? 'selected' : ''}>Guardar</option>
+                </select>
+            </td>
+            <td><button onclick="remover(${i})" class="btn-clear">✕</button></td>
+        </tr>`;
     });
 
     htmlTabela += `</tbody></table></div></div>`;
     lista.innerHTML = htmlTabela;
 
-    ativarDragAndDrop();
+    document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome));
     animarValoresTela(totalEntradas - totalSaidas, pagIn, adiIn);
+}
+
+// Função auxiliar para não repetir código das metas
+function renderizarBlocoMeta(titulo, totalEntrada, gastos) {
+    const metasConfig = { Necessidades: 0.5, Pessoal: 0.3, Guardar: 0.2 };
+    let html = `<div><h4 style="color:var(--inter-orange); font-size: 12px; margin-bottom: 15px; border-left: 3px solid var(--inter-orange); padding-left: 10px;">${titulo} (R$ ${totalEntrada.toFixed(2)})</h4>`;
     
-    document.querySelectorAll(".mes-btn").forEach(btn => {
-        btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome);
-    });
+    for (let cat in metasConfig) {
+        const metaValor = totalEntrada * metasConfig[cat];
+        const gasto = gastos[cat] || 0;
+        const porcentagem = metaValor > 0 ? (gasto / metaValor) * 100 : 0;
+        const sobra = metaValor - gasto;
+
+        html += `
+            <div style="margin-bottom: 15px;">
+                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
+                    <span>${cat}</span>
+                    <span style="font-weight: bold;">${porcentagem.toFixed(1)}%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden;">
+                    <div style="width: ${Math.min(porcentagem, 100)}%; height: 100%; background: ${porcentagem > 100 ? '#ff4d4d' : 'var(--inter-orange)'}; transition: width 0.5s;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--inter-gray); margin-top: 4px;">
+                    <span>Gasto: R$ ${gasto.toFixed(2)}</span>
+                    <span>Sobra: R$ ${sobra.toFixed(2)}</span>
+                </div>
+            </div>`;
+    }
+    return html + `</div>`;
 }
 
 // ==========================================================================

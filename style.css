@@ -501,3 +501,50 @@ small {
         width: 100%;
     }
 }
+
+/* Fundo escuro que cobre a tela toda */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85); /* Preto com 85% de transparência */
+    display: none; /* Escondido por padrão */
+    justify-content: center;
+    align-items: center;
+    z-index: 10000; /* Valor alto para ficar na frente de tudo */
+    backdrop-filter: blur(5px); /* Efeito de desfoque no fundo igual ao Inter */
+}
+
+/* O card branco/escuro onde ficam os inputs */
+.modal-card {
+    background: #1a1a1a; /* Cor de fundo escura */
+    padding: 30px;
+    border-radius: 20px;
+    width: 90%;
+    max-width: 400px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    border: 1px solid #333;
+    animation: zoomIn 0.3s ease; /* Animação suave ao abrir */
+}
+
+@keyframes zoomIn {
+    from { transform: scale(0.9); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.form-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-vertical input, .form-vertical select {
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #333;
+    background: #000;
+    color: #fff;
+    font-size: 16px;
+}

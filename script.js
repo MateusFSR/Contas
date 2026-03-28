@@ -14,11 +14,15 @@ let dadosPadrao = {
 // Tenta carregar do LocalStorage apenas como fallback imediato
 let dados = JSON.parse(localStorage.getItem("dados")) || dadosPadrao;
 
+// Instâncias Globais dos Gráficos (para destruí-los antes de redesenhar)
+let grafDistribuicao, grafCategoria, grafLimite;
+
 // ================= SINCRONIZAÇÃO COM O BANCO (SUPABASE) =================
 
 async function carregarDadosDoBanco() {
   console.log("Conectando ao banco de dados...");
-
+  const btnSalvar = document.getElementById("btnSalvar");
+  if(btnSalvar) btnSalvar.style.display = "block"; // Garante que o botão de salvar apareça
 
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}&select=dados_json`, {
@@ -33,7 +37,6 @@ async function carregarDadosDoBanco() {
     if (resultado && resultado.length > 0) {
       dados = resultado[0].dados_json;
       console.log("✅ Dados carregados do Supabase.");
-
     } else {
       console.warn("⚠️ Nenhum dado encontrado no banco. Usando local/padrão.");
     }
@@ -46,17 +49,14 @@ async function carregarDadosDoBanco() {
 async function salvarNoBanco() {
   const btn = document.getElementById("btnSalvar");
   if (btn) {
-    btn.innerText = "⏳ Salvando...";
+    btn.innerHTML = "⏳<br>Salvando"; // Usando <br> para quebrar o texto no círculo
     btn.disabled = true;
   }
-
-
 
   try {
     // 1. Verifica se já existe um registro para este usuário
     const verificar = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}`, {
         headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
-
     });
     const existe = await verificar.json();
 
@@ -87,94 +87,196 @@ async function salvarNoBanco() {
     }
 
     if (res.ok) {
-      alert("✅ Sincronizado com o Banco de Dados!");
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      alert("✅ Sincronizado!");
       localStorage.setItem("dados", JSON.stringify(dados));
     } else {
       alert("❌ Erro ao salvar no banco.");
-
     }
   } catch (erro) {
     console.error(erro);
     alert("❌ Falha na comunicação com o servidor.");
   } finally {
     if (btn) {
-      btn.innerText = "☁️ Salvar no Banco";
+      btn.innerHTML = "☁️<br>Salvar";
       btn.disabled = false;
     }
   }
 }
 
-// ================= LOGIN =================
+// ================= LOGIN (Se houver) =================
 function login() {
   const user = document.getElementById("usuario").value;
   const pass = document.getElementById("senha").value;
 
   if (user === "MateusFSR" && pass === "mateus21") {
-    window.location.href = "dashboard.html";
+    window.location.href = "dashboard.html"; // Redireciona para onde o sistema estiver
   } else {
     document.getElementById("erro").innerText = "Login inválido!";
   }
 }
 
-// ================= GRÁFICO (CHART JS) =================
-let grafico;
+// ================= CONTROLE DO MODAL DASHBOARD =================
 
-function renderGrafico(gastos) {
-  const ctx = document.getElementById('graficoCategorias');
-  if (!ctx) return;
+function abrirDashboard() {
+  const modal = document.getElementById("dashboardModal");
+  if (modal) {
+    modal.classList.add("ativo");
+    // Renderiza os gráficos somente quando o modal abrir
+    renderizarGraficosDashboard();
+  }
+}
 
-  const dadosGrafico = [
-    gastos.Pagamento.Necessidades + gastos.Adiantamento.Necessidades,
-    gastos.Pagamento.Pessoal + gastos.Adiantamento.Pessoal,
-    gastos.Pagamento.Guardar + gastos.Adiantamento.Guardar
-  ];
+function fecharDashboard() {
+  const modal = document.getElementById("dashboardModal");
+  if (modal) {
+    modal.classList.remove("ativo");
+  }
+}
 
-  if (grafico) grafico.destroy();
+// Fecha o modal se o usuário clicar fora do conteúdo branco
+window.onclick = function(event) {
+  const modal = document.getElementById("dashboardModal");
+  if (event.target == modal) {
+    fecharDashboard();
+  }
+}
 
-  grafico = new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Necessidades', 'Pessoal', 'Guardar'],
-      datasets: [{
-        data: dadosGrafico,
-        backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b']
-      }]
-    },
-    options: {
-      plugins: {
-        legend: { labels: { color: '#fff' } }
+// ================= RENDERIZAÇÃO DOS GRÁFICOS (CHART JS) =================
+
+function renderizarGraficosDashboard() {
+  const mes = document.getElementById("filtroMes").value;
+  const dadosMes = dados[mes] || [];
+
+  // 1. Cálculos de Dados
+  let totalPagamentoIn = 0;
+  let totalAdiantamentoIn = 0;
+  let gastosPorCategoria = { Necessidades: 0, Pessoal: 0, Guardar: 0 };
+  let totalGeralGasto = 0;
+
+  dadosMes.forEach(item => {
+    if (item.cat === "Entrada") {
+      if (item.desc.toLowerCase().includes("pagamento")) totalPagamentoIn += item.valor;
+      if (item.desc.toLowerCase().includes("adiantamento")) totalAdiantamentoIn += item.valor;
+    } else {
+      if (gastosPorCategoria[item.cat] !== undefined) {
+        gastosPorCategoria[item.cat] += item.valor;
+        totalGeralGasto += item.valor;
       }
     }
   });
+
+  const totalEntradaValida = totalPagamentoIn + totalAdiantamentoIn;
+  // Meta de gasto (70% das entradas) e meta de guardar (30%)
+  const metaGastoTotal = totalEntradaValida * 0.7;
+
+  // 2. Configurações de Cores
+  const coresCategoriass = {
+    Necessidades: '#f97316', // Laranja
+    Pessoal: '#3b82f6',     // Azul
+    Guardar: '#10b981'      // Verde
+  };
+
+  // --- GRÁFICO 1: DISTRIBUIÇÃO DE ENTRADAS (PIZZA) ---
+  if (grafDistribuicao) grafDistribuicao.destroy();
+  const ctx1 = document.getElementById('graficoDistribuicao');
+  if (ctx1) {
+    grafDistribuicao = new Chart(ctx1, {
+      type: 'pie',
+      data: {
+        labels: ['Pagamento', 'Adiantamento'],
+        datasets: [{
+          data: [totalPagamentoIn, totalAdiantamentoIn],
+          backgroundColor: [coresCategoriass.Necessidades, '#fdb17d'] // Laranja forte, laranja claro
+        }]
+      },
+      options: {
+        plugins: { legend: { position: 'bottom' } },
+        aspectRatio: 1.5 // Deixa o gráfico mais compacto
+      }
+    });
+  }
+
+  // --- GRÁFICO 2: GASTOS POR CATEGORIA (BARRA VERTICAL) ---
+  if (grafCategoria) grafCategoria.destroy();
+  const ctx2 = document.getElementById('graficoCategoria');
+  if (ctx2) {
+    grafCategoria = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Necessidades', 'Pessoal', 'Guardar'],
+        datasets: [{
+          label: 'Gasto Real (R$)',
+          data: [
+            gastosPorCategoria.Necessidades,
+            gastosPorCategoria.Pessoal,
+            gastosPorCategoria.Guardar
+          ],
+          backgroundColor: [coresCategoriass.Necessidades, coresCategoriass.Pessoal, coresCategoriass.Guardar]
+        }]
+      },
+      options: {
+        indexAxis: 'y', // Barra Horizontal
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { callback: value => 'R$ ' + value } } }
+      }
+    });
+  }
+
+  // --- GRÁFICO 3: LIMITE UTILIZADO (BARRA HORIZONTAL DUPLA) ---
+  if (grafLimite) grafLimite.destroy();
+  const ctx3 = document.getElementById('graficoLimite');
+  if (ctx3) {
+    const percUtilizado = metaGastoTotal ? (totalGeralGasto / metaGastoTotal) * 100 : 0;
+    const corBarraUtilizado = percUtilizado > 100 ? '#ef4444' : coresCategoriass.Guardar; // Vermelho se estourar
+
+    grafLimite = new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels: ['Limite Total (70% das Entradas)'],
+        datasets: [
+          {
+            label: 'Meta Máxima',
+            data: [metaGastoTotal],
+            backgroundColor: '#e2e8f0', // Cinza de fundo
+            barThickness: 30
+          },
+          {
+            label: 'Gasto Atual',
+            data: [totalGeralGasto],
+            backgroundColor: corBarraUtilizado,
+            barThickness: 30
+          }
+        ]
+      },
+      options: {
+        indexAxis: 'y', // Barra Horizontal
+        plugins: {
+          legend: { position: 'bottom' },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: R$ ${ctx.raw.toFixed(2)} (${percUtilizado.toFixed(0)}% do limite)`
+            }
+          }
+        },
+        scales: {
+          x: { stacked: false, beginAtZero: true, ticks: { callback: value => 'R$ ' + value } },
+          y: { stacked: true }
+        }
+      }
+    });
+  }
 }
 
 // ================= ADICIONAR / REMOVER / EDITAR =================
 function adicionar() {
   const desc = document.getElementById("desc").value;
-  const valor = parseFloat(document.getElementById("valor").value);
+  const valorInput = document.getElementById("valor").value;
   const cat = document.getElementById("cat").value;
   const origem = document.getElementById("origem")?.value || "Pagamento";
   const mes = document.getElementById("filtroMes").value;
 
-  if (!desc || !valor) return;
+  if (!desc || !valorInput) return;
+  const valor = parseFloat(valorInput);
 
   let novo = { desc, valor, cat };
   if (cat !== "Entrada") novo.origem = origem;
@@ -184,6 +286,10 @@ function adicionar() {
 
   localStorage.setItem("dados", JSON.stringify(dados));
   render();
+
+  // Limpa os campos
+  document.getElementById("desc").value = "";
+  document.getElementById("valor").value = "";
 }
 
 function remover(index) {
@@ -201,7 +307,7 @@ function editarCampo(index, campo, valor) {
   render();
 }
 
-// ================= RENDERIZAÇÃO DA PÁGINA =================
+// ================= RENDERIZAÇÃO DA PÁGINA PRINCIPAL =================
 function render() {
   const mesElement = document.getElementById("filtroMes");
   if (!mesElement) return;
@@ -212,7 +318,7 @@ function render() {
 
   if (!dados[mes]) dados[mes] = [];
 
-  let entrada = 0, saida = 0, pagamento = 0, adiantamento = 0;
+  let entrada = 0, saida = 0, pagamentoIn = 0, adiantamentoIn = 0;
   let gastos = {
     Pagamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 },
     Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
@@ -224,8 +330,8 @@ function render() {
   dados[mes].forEach((item, i) => {
     if (item.cat === "Entrada") {
       entrada += item.valor;
-      if (item.desc.toLowerCase().includes("pagamento")) pagamento += item.valor;
-      if (item.desc.toLowerCase().includes("adiantamento")) adiantamento += item.valor;
+      if (item.desc.toLowerCase().includes("pagamento")) pagamentoIn += item.valor;
+      if (item.desc.toLowerCase().includes("adiantamento")) adiantamentoIn += item.valor;
     } else {
       saida += item.valor;
       let origem = item.origem || "Pagamento";
@@ -259,15 +365,15 @@ function render() {
   lista.innerHTML = html;
   ativarDrag();
 
-  // Cálculos de Resumo
+  // Cálculos de Resumo (Metas 40/30/30)
   const metas = (v) => ({ Necessidades: v * 0.4, Pessoal: v * 0.3, Guardar: v * 0.3 });
-  let mPag = metas(pagamento);
-  let mAdi = metas(adiantamento);
+  let mPag = metas(pagamentoIn);
+  let mAdi = metas(adiantamentoIn);
 
   resumo.innerHTML = `
   <div class="card">
     <h2>Resumo - ${mes}</h2>
-    ${gerarGraficoHTML(pagamento, adiantamento)}
+    ${gerarGraficoHTML(pagamentoIn, adiantamentoIn)}
     <div class="resumo-topo">
       <div class="resumo-box"><span>Geral</span><strong id="totalGeral">0</strong></div>
       <div class="resumo-box pagamento-box"><span>Pagamento</span><strong id="vPag">0</strong></div>
@@ -279,30 +385,30 @@ function render() {
     </div>
     <hr>
     <div class="bloco-limite">
-      <h3>💰 Pagamento</h3>
+      <h3>💰 Do Pagamento</h3>
       ${gerarBarra("Necessidades", gastos.Pagamento.Necessidades, mPag.Necessidades)}
       ${gerarBarra("Pessoal", gastos.Pagamento.Pessoal, mPag.Pessoal)}
       ${gerarBarra("Guardar", gastos.Pagamento.Guardar, mPag.Guardar)}
     </div>
     <div class="bloco-limite">
-      <h3>💵 Adiantamento</h3>
+      <h3>💵 Do Adiantamento</h3>
       ${gerarBarra("Necessidades", gastos.Adiantamento.Necessidades, mAdi.Necessidades)}
       ${gerarBarra("Pessoal", gastos.Adiantamento.Pessoal, mAdi.Pessoal)}
       ${gerarBarra("Guardar", gastos.Adiantamento.Guardar, mAdi.Guardar)}
     </div>
   </div>`;
 
-  renderGrafico(gastos);
+  // Animação dos valores (com pequeno delay para o HTML carregar)
   setTimeout(() => {
     animarValor("totalGeral", entrada);
-    animarValor("vPag", pagamento);
-    animarValor("vAdi", adiantamento);
+    animarValor("vPag", pagamentoIn);
+    animarValor("vAdi", adiantamentoIn);
     animarValor("vSaida", saida);
     animarValor("vSaldo", entrada - saida);
   }, 100);
 }
 
-// ================= AUXILIARES DE UI =================
+// ================= AUXILIARES DE UI PRINCIPAL =================
 
 function gerarBarra(nome, gasto, meta) {
   let diff = meta - gasto;
@@ -327,43 +433,92 @@ function gerarGraficoHTML(pag, adi) {
 }
 
 function animarValor(id, valorFinal) {
+  let el = document.getElementById(id);
+  if (!el) return;
+  
   let atual = 0;
-  let incremento = valorFinal / 30;
+  let incremento = valorFinal / 30; // 30 passos
+  if(valorFinal === 0) { el.innerText = "R$ 0"; return; }
+
   let intervalo = setInterval(() => {
     atual += incremento;
-    if (atual >= valorFinal) { atual = valorFinal; clearInterval(intervalo); }
-    let el = document.getElementById(id);
-    if (el) el.innerText = "R$ " + Math.floor(atual);
+    if (atual >= valorFinal) { 
+      atual = valorFinal; 
+      clearInterval(intervalo); 
+    }
+    el.innerText = "R$ " + Math.floor(atual);
   }, 20);
 }
 
 function mudarMes(mes){
-  document.getElementById("filtroMes").value = mes;
+  const mesFiltroEl = document.getElementById("filtroMes");
+  if(mesFiltroEl) mesFiltroEl.value = mes;
 
   document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.remove("ativo"));
-  if(event) event.target.classList.add("ativo");
+  
+  // Encontra e ativa o botão correto
+  document.querySelectorAll(".mes-btn").forEach(btn => {
+      if(btn.innerText === mes) btn.classList.add("ativo");
+  });
+
   render();
 }
 
 function ativarDrag() {
-  const linhas = document.querySelectorAll("#tabelaDrag tr[draggable=true]");
+  const tabela = document.getElementById("tabelaDrag");
+  if (!tabela) return;
+  const linhas = tabela.querySelectorAll("tr[draggable=true]");
   let arrastando;
+  
   linhas.forEach(linha => {
     linha.addEventListener("dragstart", () => arrastando = linha);
-    linha.addEventListener("dragover", e => { e.preventDefault(); if (arrastando !== linha) linha.parentNode.insertBefore(arrastando, linha); });
-
-
+    linha.addEventListener("dragover", e => { 
+        e.preventDefault(); 
+        if (arrastando !== linha) linha.parentNode.insertBefore(arrastando, linha); 
+    });
 
     linha.addEventListener("dragend", () => {
         const mes = document.getElementById("filtroMes").value;
-        const novasLinhas = document.querySelectorAll("#tabelaDrag tr[draggable=true]");
+        const novasLinhas = tabela.querySelectorAll("tr[draggable=true]");
         let novaLista = [];
-        novasLinhas.forEach(l => novaLista.push(dados[mes][l.dataset.index]));
+        novasLinhas.forEach(l => {
+            const indexOriginal = l.dataset.index;
+            novaLista.push(dados[mes][indexOriginal]);
+        });
         dados[mes] = novaLista;
-
+        
+        // Redesenha para atualizar os data-index
         render();
     });
   });
 }
 
+// Função para exportar que estava em branco
+function exportarExcel() {
+    alert("🚀 Função de exportar Excel ainda não implementada, mas o botão funciona!");
+}
+
+function toggleDarkMode() {
+    const body = document.body;
+    const btn = document.getElementById("btnDarkMode");
+    
+    body.classList.toggle("dark-mode");
+    
+    // Salva a preferência
+    const isDark = body.classList.contains("dark-mode");
+    localStorage.setItem("dark-mode", isDark);
+    
+    // Altera o ícone
+    btn.innerText = isDark ? "☀️" : "🌙";
+}
+
+// Carregar preferência ao abrir o site
+window.addEventListener("load", () => {
+    if (localStorage.getItem("dark-mode") === "true") {
+        document.body.classList.add("dark-mode");
+        document.getElementById("btnDarkMode").innerText = "☀️";
+    }
+});
+
 // ================= INICIALIZAÇÃO =================
+// carregarDadosDoBanco já é chamado pelo body onload no HTML

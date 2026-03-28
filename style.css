@@ -103,10 +103,13 @@ h2, h3, h4 {
     color: var(--inter-orange);
 }
 
+/* No seu style.css */
 .bank-value.sub {
-    font-size: 24px;
-    color: var(--inter-text);
+    font-size: 16px !important;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8); /* Branco levemente transparente */
 }
+
 
 /* ==========================================================================
    FORMULÁRIO DE ADICIONAR
@@ -562,5 +565,109 @@ small {
     to {
         box-shadow: 0 0 15px #ff4d4d, 0 0 20px rgba(255, 77, 77, 0.4);
     }
+}
+
+/* Container do Toast de Sucesso */
+#toast-sucesso {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #1a1a1a;
+    border: 1px solid #2ECC71;
+    border-left: 5px solid #2ECC71;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    display: none; /* Escondido por padrão */
+    align-items: center;
+    gap: 15px;
+    z-index: 30000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: slideInRight 0.5s ease forwards;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(120%); opacity: 0; }
+}
+
+.toast-icon {
+    width: 30px;
+    height: 30px;
+}
+
+
+/* --- RESPONSIVIDADE --- */
+
+/* Ajustes gerais para telas menores (Celulares) */
+@media (max-width: 768px) {
+    body {
+        padding: 10px; /* Menos margem nas bordas */
+    }
+
+    /* O card principal (Saldo/Limite) empilha os itens */
+    .bank-card.full > div {
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+
+    /* Remove a borda lateral que vira borda inferior no mobile */
+    .bank-card.full > div > div:first-child {
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding-right: 0 !important;
+        padding-bottom: 15px !important;
+    }
+
+    /* Faz a barra de limite ocupar a largura total no mobile */
+    div[style*="max-width: 180px"] {
+        max-width: 100% !important;
+    }
+
+    /* Modal de Metas: as duas colunas viram uma só */
+    #modalMetas .bank-card > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+        gap: 20px !important;
+    }
+
+    /* Tabela de Extrato: permite scroll lateral para não quebrar o layout */
+    .bank-table-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .bank-table {
+        min-width: 500px; /* Garante que a tabela não esmague os textos */
+    }
+
+    /* Botão Flutuante de Salvar: um pouco menor no mobile */
+    .btn-save-main {
+        width: 50px;
+        height: 50px;
+        bottom: 15px;
+        right: 15px;
+    }
+}
+
+/* Remove borda lateral no mobile e centraliza */
+@media (max-width: 600px) {
+    .res-border-none {
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding-right: 0 !important;
+        padding-bottom: 15px !important;
+        margin-bottom: 10px;
+    }
+}
+
+/* Garante que o brilho pulsante funcione */
+@keyframes pulseGlow {
+    from { box-shadow: 0 0 5px #ff4d4d; }
+    to { box-shadow: 0 0 15px #ff4d4d, 0 0 20px rgba(255, 77, 77, 0.4); }
 }
 

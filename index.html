@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Login | TWS BANK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css"> <style>
+        body { 
+            display: flex; align-items: center; justify-content: center; 
+            height: 100vh; background: #121212; margin: 0; 
+        }
+        .login-box { width: 90%; max-width: 380px; }
+        .login-box h1 { color: #fff; text-align: center; font-weight: 300; margin-bottom: 30px; }
+        #erro { color: #ff4d4d; text-align: center; font-size: 13px; margin-top: 15px; height: 20px; }
+    </style>
+</head>
+<body class="dark-mode">
+    <div class="login-box bank-card">
+        <div style="text-align: center; margin-bottom: 10px;">
+            <span style="color: #FF7A00; font-size: 40px;">●</span>
+        </div>
+        <h1>TWS BANK</h1>
+        
+        <input type="text" id="usuario" placeholder="Usuário" style="margin-bottom: 15px;">
+
+        <input type="password" 
+            id="senha" 
+            placeholder="Senha (6 dígitos)" 
+            inputmode="numeric" 
+            pattern="[0-9]*" 
+            style="margin-bottom: 20px;">
+
+        <button class="btn-primary" style="width: 100%;" onclick="login()">ACESSAR CONTA</button>
+        
+        <div id="erro"></div>
+    </div>
+
+
+    <script src="script.js"></script>
+</body>
+</html>

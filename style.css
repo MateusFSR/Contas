@@ -1,6 +1,6 @@
 /* ==========================================================================
-   VARIAVEIS E TEMA (PALETA BANCO INTER)
-   ========================================================================== */
+VARIAVEIS E TEMA (PALETA BANCO INTER)
+========================================================================== */
 :root {
     --inter-orange: #FF7A00;
     --inter-orange-hover: #E66E00;
@@ -25,8 +25,8 @@ body.dark-mode {
 }
 
 /* ==========================================================================
-   RESET E CONFIGURAÇÕES GERAIS
-   ========================================================================== */
+RESET E CONFIGURAÇÕES GERAIS
+========================================================================== */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -54,8 +54,8 @@ h2, h3, h4 {
 }
 
 /* ==========================================================================
-   CARDS E LAYOUT DE GRADE
-   ========================================================================== */
+CARDS E LAYOUT DE GRADE
+========================================================================== */
 .bank-card {
     background: var(--inter-card);
     padding: 25px;
@@ -84,8 +84,8 @@ h2, h3, h4 {
 }
 
 /* ==========================================================================
-   ELEMENTOS DE VALOR E LABELS
-   ========================================================================== */
+ELEMENTOS DE VALOR E LABELS
+========================================================================== */
 .bank-label {
     display: block;
     color: var(--inter-gray);
@@ -112,8 +112,8 @@ h2, h3, h4 {
 
 
 /* ==========================================================================
-   FORMULÁRIO DE ADICIONAR
-   ========================================================================== */
+FORMULÁRIO DE ADICIONAR
+========================================================================== */
 .form-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -155,8 +155,8 @@ input:focus, select:focus {
 }
 
 /* ==========================================================================
-   EXTRATO / TABELA DE LANÇAMENTOS
-   ========================================================================== */
+EXTRATO / TABELA DE LANÇAMENTOS
+========================================================================== */
 .bank-table-container {
     overflow-x: auto;
 }
@@ -201,8 +201,8 @@ input:focus, select:focus {
 }
 
 /* ==========================================================================
-   FILTROS DE MÊS (SCROLL HORIZONTAL)
-   ========================================================================== */
+FILTROS DE MÊS (SCROLL HORIZONTAL)
+========================================================================== */
 .meses-scroll {
     display: flex;
     gap: 10px;
@@ -242,8 +242,8 @@ body.dark-mode .mes-btn.ativo {
 }
 
 /* ==========================================================================
-   BARRAS DE PROGRESSO (METAS) - IGUAL AO CÓDIGO 1
-   ========================================================================== */
+BARRAS DE PROGRESSO (METAS) - IGUAL AO CÓDIGO 1
+========================================================================== */
 .meta-container {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -298,8 +298,8 @@ small {
 }
 
 /* ==========================================================================
-   BOTÕES FLUTUANTES (DIREITA)
-   ========================================================================== */
+BOTÕES FLUTUANTES (DIREITA)
+========================================================================== */
 .floating-group {
     position: fixed;
     right: 25px;
@@ -356,8 +356,8 @@ small {
 }
 
 /* ==========================================================================
-   RODAPÉ (UTILITÁRIOS EXCEL)
-   ========================================================================== */
+RODAPÉ (UTILITÁRIOS EXCEL)
+========================================================================== */
 .bank-footer {
     margin-top: 60px;
     padding: 40px 0;
@@ -388,8 +388,8 @@ small {
 }
 
 /* ==========================================================================
-   MODAL DASHBOARD
-   ========================================================================== */
+MODAL DASHBOARD
+========================================================================== */
 #dashboardModal {
     display: none;
     position: fixed;
@@ -440,8 +440,8 @@ small {
 }
 
 /* ==========================================================================
-   RESPONSIVIDADE
-   ========================================================================== */
+RESPONSIVIDADE
+========================================================================== */
 @media (max-width: 768px) {
     .bank-grid {
         grid-template-columns: 1fr;
@@ -733,4 +733,82 @@ small {
     .user-badge {
         display: none; /* Esconde o badge no celular pra não poluir */
     }
+}
+
+.btn-float-mini {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #252525;
+    border: 1px solid #333;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+    transition: 0.3s;
+}
+
+.btn-float-mini:hover {
+    background: var(--inter-orange);
+    transform: scale(1.1);
+}
+
+/* Rotação na engrenagem ao abrir */
+.active-gear {
+    transform: rotate(90deg);
+    background: var(--inter-orange) !important;
+}
+
+#menuFixosOpcoes {
+    display: none; 
+    flex-direction: row-reverse; /* Alinha na horizontal para a esquerda */
+    gap: 12px;
+    margin-right: 15px; /* Espaço entre os mini botões e a engrenagem */
+    align-items: center;
+}
+
+.floating-group {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: row-reverse; /* Faz os itens crescerem da direita para a esquerda */
+    align-items: center;
+    z-index: 9999;
+}
+
+#menuFixosOpcoes {
+    /* Quando o JS mudar para 'flex', ele usará estas regras */
+    display: none; 
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+/* Botões mini que aparecem ao lado */
+.btn-float-mini {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #252525;
+    border: 1px solid #444;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    transition: 0.3s;
+}
+
+.btn-float-mini:hover {
+    background: var(--inter-orange);
+}
+
+/* Animação simples de fade-in */
+@keyframes fadeInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+#menuFixosOpcoes.aberto {
+    display: flex !important;
+    animation: fadeInRight 0.3s ease-out forwards;
 }

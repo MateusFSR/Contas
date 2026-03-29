@@ -4,24 +4,59 @@
     <meta charset="UTF-8">
     <title>Login | TWS BANK</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css"> <style>
+    <link rel="stylesheet" href="style.css"> 
+    <style>
+        /* Alterado para cores claras */
         body { 
-            display: flex; align-items: center; justify-content: center; 
-            height: 100vh; background: #121212; margin: 0; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            height: 100vh; 
+            background: #f4f7f6; /* Fundo cinza bem claro */
+            margin: 0; 
+            font-family: sans-serif;
         }
-        .login-box { width: 90%; max-width: 380px; }
-        .login-box h1 { color: #fff; text-align: center; font-weight: 300; margin-bottom: 30px; }
-        #erro { color: #ff4d4d; text-align: center; font-size: 13px; margin-top: 15px; height: 20px; }
+        .login-box { 
+            width: 90%; 
+            max-width: 380px; 
+            background: #ffffff; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        }
+        .login-box h1 { 
+            color: #333; /* Texto escuro para contraste */
+            text-align: center; 
+            font-weight: 300; 
+            margin-bottom: 30px; 
+        }
+        #erro { 
+            color: #ff4d4d; 
+            text-align: center; 
+            font-size: 13px; 
+            margin-top: 15px; 
+            height: 20px; 
+        }
+        /* Estilização básica dos inputs para combinar com o tema claro */
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            background: #fff;
+            color: #333;
+        }
     </style>
 </head>
-<body class="dark-mode">
+<body class="light-mode">
     <div class="login-box bank-card">
         <div style="text-align: center; margin-bottom: 10px;">
             <span style="color: #FF7A00; font-size: 40px;">●</span>
         </div>
         <h1>TWS BANK</h1>
         
-        <input type="text" id="usuario" placeholder="Usuário" style="margin-bottom: 15px;">
+        <input type="text" id="usuario" placeholder="Usuário" value="MateusFSR" style="margin-bottom: 15px;">
 
         <input type="password" 
             id="senha" 
@@ -30,12 +65,19 @@
             pattern="[0-9]*" 
             style="margin-bottom: 20px;">
 
-        <button class="btn-primary" style="width: 100%;" onclick="login()">ACESSAR CONTA</button>
+        <button id="btnLogin" class="btn-primary" style="width: 100%; cursor: pointer;" onclick="login()">ACESSAR CONTA</button>
         
         <div id="erro"></div>
     </div>
 
-
+    <script>
+        // Função para acionar o botão ao apertar Enter
+        document.addEventListener('keypress', function(e) {
+            if(e.key === 'Enter') {
+                document.getElementById('btnLogin').click();
+            }
+        });
+    </script>
     <script src="script.js"></script>
 </body>
 </html>

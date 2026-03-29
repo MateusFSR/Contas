@@ -409,26 +409,54 @@ function render() {
         containerMain.style.marginTop = (header.offsetHeight + 10) + "px";
     }
 
-    let totalEntradas = 0, totalSaidas = 0, pagIn = 0, adiIn = 0;
+    let totalEntradas = 0, totalSaidas = 0;
+    let pagIn = 0, adiIn = 0;
+    let pagOut = 0, adiOut = 0
     let limiteUsadoNoMes = 0;
     
     // 1. CÁLCULOS
     dados[mesAtualNome].forEach(item => {
-        const valor = parseFloat(item.valor) || 0;
-        if (item.cat === "Entrada") {
-            totalEntradas += valor;
-            const desc = item.desc.toLowerCase();
-            if (desc.includes("pagamento")) pagIn += valor;
-            if (desc.includes("adiantamento")) adiIn += valor;
-        } else {
-            if (item.pago !== false) {
-                totalSaidas += valor;
-                if (item.origem && item.origem.includes("Crédito")) {
-                    limiteUsadoNoMes += valor;
-                }
-            }
+    const valor = parseFloat(item.valor) || 0;
+    const origem = (item.origem || "").toLowerCase();
+    const desc = (item.desc || "").toLowerCase();
+
+    // =====================
+    // ENTRADAS
+    // =====================
+    if (item.cat === "Entrada") {
+        totalEntradas += valor;
+
+        if (desc.includes("pagamento") || origem.includes("pag")) {
+            pagIn += valor;
         }
+
+        if (desc.includes("adiantamento") || origem.includes("adi")) {
+            adiIn += valor;
+        }
+    }
+
+    // =====================
+    // SAÍDAS
+    // =====================
+    else if (item.pago !== false) {
+        totalSaidas += valor;
+
+        if (origem.includes("pag")) {
+            pagOut += valor;
+        }
+
+        if (origem.includes("adi")) {
+            adiOut += valor;
+        }
+
+        if (item.origem && item.origem.includes("Crédito")) {
+            limiteUsadoNoMes += valor;
+        }
+    }
     });
+
+    const saldoPagamento = pagIn - pagOut;
+    const saldoAdiantamento = adiIn - adiOut;
 
     let totalCaixinhaHistorico = 0;
     for (let i = 0; i <= indexMesAtual; i++) {
@@ -451,44 +479,65 @@ function render() {
     // 2. RENDERIZAÇÃO DO RESUMO
     resumo.innerHTML = `
     <div class="bank-grid">
+
+        <!-- CARD PRINCIPAL -->
         <div class="bank-card full no-padding">
-            <div style="padding: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px;">
-                <div style="flex: 1; min-width: 200px; border-right: 1px solid var(--inter-border); padding-right: 20px;" class="res-border-none">
-                    <span class="bank-label" style="color: ${corSuave}">SALDO TOTAL EM CONTA</span>
-                    <strong class="bank-value" id="vTotal" style="display: block; font-size: 28px; margin: 5px 0; color: var(--inter-orange);">R$ 0,00</strong>
+            <div class="resumo-topo">
+
+                <!-- ESQUERDA -->
+                <div class="resumo-esquerda">
+                    <span class="bank-label">SALDO TOTAL EM CONTA</span>
                     
-                    <div style="display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;">
-                        <button onclick="abrirModal()" style="background: none; border: none; color: var(--inter-orange); font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
-                            <span style="font-size: 18px; line-height: 0;">›</span> novo lançamento
+                    <strong class="bank-value destaque" id="vTotal">
+                        R$ 0,00
+                    </strong>
+
+                    <div class="acoes-saldo">
+                        <button onclick="abrirModal()" class="btn-acao destaque">
+                            <span class="icone">›</span>
+                            novo lançamento
                         </button>
-                        <button onclick="toggleMetasFlutuante()" style="background: none; border: none; color: ${corSuave}; font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
-                            <span style="font-size: 14px; line-height: 0;">📊</span> ver metas
+
+                        <button onclick="toggleMetasFlutuante()" class="btn-acao">
+                            <span class="icone">📊</span>
+                            ver metas
                         </button>
                     </div>
                 </div>
-                
-                <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
-                    <span class="bank-label" style="color: ${corSuave}">LIMITE DISPONÍVEL (CAIXINHA)</span>
-                    <strong class="bank-value" style="font-size: 24px; margin: 5px 0; color: ${limiteDisponivel < 0 ? '#ff4d4d' : 'var(--inter-text)'}">
+
+                <!-- DIREITA -->
+                <div class="resumo-direita">
+                    <span class="bank-label">LIMITE DISPONÍVEL (CAIXINHA)</span>
+                    
+                    <strong class="bank-value limite-valor">
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
-                    <div style="width: 100%; max-width: 220px; height: 6px; background: var(--inter-border); border-radius: 3px; position: relative; margin-top: 10px;">
-                        <div style="width: ${Math.min(porcentagemGastoLimite, 100)}%; height: 100%; background: #2ECC71; border-radius: 3px; transition: width 0.5s ease; ${estiloBrilho}"></div>
+
+                    <div class="barra-limite">
+                        <div class="barra-preenchimento" style="width: ${Math.min(porcentagemGastoLimite, 100)}%"></div>
                     </div>
                 </div>
+
             </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; width: 100%; margin-top: 10px;">
-            <div class="bank-card" style="padding: 10px 15px; min-height: auto;">
-                <span class="bank-label" style="font-size: 9px; margin-bottom: 2px; color: ${corSuave}">SALDO PAGAMENTO</span>
-                <strong class="bank-value" id="vPag" style="font-size: 16px; color: ${corDinamica};">R$ 0,00</strong>
+        <!-- CARD INFERIOR -->
+        <div class="bank-card resumo-inferior">
+
+            <div class="resumo-item esquerda">
+                <span class="bank-label">SALDO PAGAMENTO</span>
+                <strong id="vPag">R$ 0,00</strong>
             </div>
-            <div class="bank-card" style="padding: 10px 15px; min-height: auto;">
-                <span class="bank-label" style="font-size: 9px; margin-bottom: 2px; color: ${corSuave}">SALDO ADIANTAMENTO</span>
-                <strong class="bank-value" id="vAdi" style="font-size: 16px; color: ${corDinamica};">R$ 0,00</strong>
+
+            <div class="divisor-vertical"></div>
+
+            <div class="resumo-item direita">
+                <span class="bank-label">SALDO ADIANTAMENTO</span>
+                <strong id="vAdi">R$ 0,00</strong>
             </div>
+
         </div>
+
     </div>
     `;
 
@@ -555,7 +604,11 @@ function render() {
     lista.innerHTML = htmlExtrato;
 
     document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome));
-    animarValoresTela(totalEntradas - totalSaidas, pagIn, adiIn);
+    animarValoresTela(
+    totalEntradas - totalSaidas,
+    saldoPagamento,
+    saldoAdiantamento
+    );
     aplicarModoFurtivo();
     ativarDragAndDrop();
 }

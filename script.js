@@ -724,29 +724,46 @@ function mostrarToastSucesso() {
         setTimeout(() => { toast.style.display = "none"; }, 500);
     }, 3000);
 }
+
 function adicionarComModal() {
-    const desc = document.getElementById("desc").value;
-    const valor = parseFloat(document.getElementById("valor").value);
+    const descInput = document.getElementById("desc");
+    const valorInput = document.getElementById("valor");
     const cat = document.getElementById("cat").value;
     const origem = document.getElementById("origem").value;
     const mesAtual = document.getElementById("filtroMes").value;
+    const isPrevisto = document.getElementById("checkPrevisto").checked; // Pega o estado do checkbox
 
-    if (!desc || isNaN(valor)) return alert("Preencha os campos corretamente!");
+    const desc = descInput.value;
+    const valor = parseFloat(valorInput.value);
+
+    if (!desc || isNaN(valor)) {
+        alert("Preencha os campos corretamente!");
+        return;
+    }
 
     const novoItem = {
-        id: Date.now().toString(), // GERADOR DE ID ÚNICO
-        desc,
-        valor,
-        cat,
-        origem,
-        pago: true,
+        id: Date.now().toString(),
+        // Se for previsto, adiciona a tag no nome para facilitar a identificação visual
+        desc: isPrevisto ? `[PREVISTO] ${desc}` : desc,
+        valor: valor,
+        cat: cat,
+        origem: origem,
+        pago: !isPrevisto, // Se checkado (true), pago vira false. Se desmarcado (false), pago vira true.
         dataCriacao: new Date().toISOString()
     };
 
+    if (!dados[mesAtual]) dados[mesAtual] = [];
     dados[mesAtual].push(novoItem);
-    salvarDados();
+    
+    // Limpa os campos e fecha o modal
+    descInput.value = "";
+    valorInput.value = "";
+    document.getElementById("checkPrevisto").checked = false;
+
     fecharModal();
     render();
+    salvarDados(); // Sincroniza local e Supabase
+    mostrarToastSucesso();
 }
 
 function abrirDashboard() {

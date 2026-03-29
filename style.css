@@ -196,9 +196,9 @@ FILTROS DE MÊS (SCROLL HORIZONTAL)
 ========================================================================== */
 .meses-scroll {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     overflow-x: auto;
-    padding-bottom: 15px;
+    padding-bottom: 5px; /* Reduzido de 15px */
     scrollbar-width: none;
 }
 
@@ -207,24 +207,42 @@ FILTROS DE MÊS (SCROLL HORIZONTAL)
 }
 
 .mes-btn {
-    padding: 10px 22px;
-    background: var(--inter-card);
+    padding: 8px 18px;
+    background: var(--inter-card) !important;
     border: 1px solid var(--inter-border);
     border-radius: 25px;
     cursor: pointer;
     white-space: nowrap;
     font-weight: 600;
-    color: var(--inter-text);
-    transition: var(--transition);
+    color: var(--inter-text) !important; 
+    transition: all 0.2s ease;
+    outline: none !important; /* Remove a linha azul/preta de foco */
+    -webkit-tap-highlight-color: transparent; /* Remove o flash cinza no celular */
 }
 
-.mes-btn.ativo, 
-body.dark-mode .mes-btn.ativo {
+.mes-btn.ativo {
     background-color: var(--inter-orange) !important;
-    color: white !important;
+    color: #FFFFFF !important; 
     border-color: var(--inter-orange) !important;
-    box-shadow: 0 4px 10px rgba(255, 122, 0, 0.3);
-    opacity: 1;
+}
+
+.mes-btn:hover {
+    border-color: var(--inter-orange);
+    color: var(--inter-orange);
+}
+
+.mes-btn:hover:not(.ativo) {
+    border-color: var(--inter-orange);
+    color: var(--inter-orange) !important;
+}
+
+.mes-btn.ativo:hover {
+    color: #FFFFFF !important; /* Mantém branco se já estiver ativo */
+}
+
+/* 5. Ajuste para o Modo Claro */
+body:not(.dark-mode) .mes-btn:not(.ativo) {
+    color: #2D3436 !important;
 }
 
 /* Feedback visual ao apertar o botão */
@@ -286,6 +304,12 @@ small {
     margin-top: 5px;
     color: var(--inter-gray);
     font-size: 11px;
+}
+
+.mes-btn.ativo:focus,
+.mes-btn.ativo:active {
+    background-color: var(--inter-orange) !important;
+    color: #FFFFFF !important;
 }
 
 /* ==========================================================================
@@ -902,6 +926,14 @@ select.input-transparente:focus {
     border-bottom: 1px solid var(--inter-border) !important; 
 }
 
+.mes-btn:focus, 
+.mes-btn:active,
+.mes-btn:focus-visible {
+    outline: none !important;
+    background: var(--inter-card); /* Mantém o fundo padrão se não for o ativo */
+    color: var(--inter-text);
+}
+
 /* Ajuste das Labels para alinhar com o novo padding do input */
 .bank-label {
     display: block !important;
@@ -949,3 +981,15 @@ select.input-transparente:focus {
     border: none !important;
     background: none !important;
 }
+
+/* 1. Reduz o padding interno do card de meses */
+.bank-card:has(#menuMeses) {
+    padding: 15px 25px !important; 
+    margin-bottom: 15px !important;
+}
+
+/* 2. Diminui a margem do título "Selecionar Período" */
+.bank-card:has(#menuMeses) .bank-label {
+    margin-bottom: 8px !important;
+}
+

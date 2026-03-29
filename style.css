@@ -1284,3 +1284,159 @@ select.input-transparente:focus {
 }
 
 
+/* Estilo para itens [PREVISTO] no Extrato */
+.item-transacao[data-pago="false"] {
+    opacity: 0.6;
+    border-left: 3px dashed var(--inter-gray);
+    background: rgba(255, 122, 0, 0.02);
+}
+
+.item-transacao[data-pago="false"] .valor-transacao {
+    color: var(--inter-gray) !important;
+    font-style: italic;
+}
+
+/* Badge de "Pendente" elegante */
+.badge-pendente {
+    font-size: 9px;
+    text-transform: uppercase;
+    background: rgba(255, 122, 0, 0.1);
+    color: var(--inter-orange);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    border: 1px solid rgba(255, 122, 0, 0.2);
+}
+
+/* Container do Checkbox no Modal */
+.previsto-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 12px;
+    margin-top: 5px;
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 40px;
+    height: 22px;
+}
+
+.switch input { opacity: 0; width: 0; height: 0; }
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #333;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 16px; width: 16px;
+    left: 3px; bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider { background-color: var(--inter-orange); }
+input:checked + .slider:before { transform: translateX(18px); }
+
+/* Efeito de Vidro nos Modais */
+.modal-card, .modal-content {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background-color: rgba(30, 30, 30, 0.85); /* No dark mode */
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Melhoria na barra de scroll de meses */
+.meses-scroll {
+    padding: 10px 0;
+    mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
+/* Sombra suave nos textos de valores */
+.bank-value {
+    letter-spacing: -1px;
+    text-shadow: 0 4px 10px rgba(255, 122, 0, 0.15);
+}
+
+/* Hover suave nas linhas do extrato */
+.item-transacao {
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.item-transacao:hover {
+    background: rgba(255, 122, 0, 0.04) !important;
+    transform: scale(1.01);
+}
+
+/* 1. Badge Pendente (O que está circulado na sua imagem 1) */
+.badge-pendente {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--inter-orange);
+    background: rgba(255, 122, 0, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 122, 0, 0.3);
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+/* 2. Estilo para a linha toda quando for previsto */
+.item-transacao[data-pago="false"] {
+    border-left: 4px dashed var(--inter-orange) !important;
+    background: rgba(255, 122, 0, 0.02);
+}
+
+.item-transacao[data-pago="false"] .titulo-transacao {
+    color: var(--inter-gray);
+}
+
+/* 3. Estilizando o Checkbox (Imagem 2) */
+input[type="checkbox"]#checkPrevisto {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--inter-orange);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    margin-right: 10px;
+    vertical-align: middle;
+}
+
+input[type="checkbox"]#checkPrevisto:checked {
+    background: var(--inter-orange);
+}
+
+input[type="checkbox"]#checkPrevisto:checked::after {
+    content: '✔';
+    position: absolute;
+    color: white;
+    font-size: 12px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+/* Texto ao lado do checkbox */
+.form-vertical label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--inter-text);
+    cursor: pointer;
+}

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>TWS BANK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/9484/9484132.png">
+    <link rel="apple-touch-icon" href="icone.png">
+
+    <style>
+        /* CSS Auxiliar para novos recursos */
+        .blur-efect { filter: blur(6px); user-select: none; transition: 0.3s; }
+        .header-right { display: flex; align-items: center; gap: 15px; }
+        .btn-furtivo { cursor: pointer; font-size: 20px; transition: 0.3s; padding: 5px; }
+        .btn-furtivo:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body class="dark-mode">
+
+    <header class="bank-header-main">
+        <div class="header-container">
+            <div class="logo-area">
+                <span class="bank-icon">●</span>
+                <h1>Finanças</h1>
+            </div>
+            <div class="header-right">
+                <span id="btnFurtivo" class="btn-furtivo" onclick="toggleModoFurtivo()" title="Esconder Valores">👁️</span>
+                <div class="user-badge">Sessão Segura</div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="bank-card">
+            <h3 class="bank-label">Selecionar Período</h3>
+            <div class="meses-scroll" id="menuMeses">
+                <button class="mes-btn" onclick="mudarMes('Janeiro')">Janeiro</button>
+                <button class="mes-btn" onclick="mudarMes('Fevereiro')">Fevereiro</button>
+                <button class="mes-btn" onclick="mudarMes('Março')">Março</button>
+                <button class="mes-btn" onclick="mudarMes('Abril')">Abril</button>
+                <button class="mes-btn" onclick="mudarMes('Maio')">Maio</button>
+                <button class="mes-btn" onclick="mudarMes('Junho')">Junho</button>
+                <button class="mes-btn" onclick="mudarMes('Julho')">Julho</button>
+                <button class="mes-btn" onclick="mudarMes('Agosto')">Agosto</button>
+                <button class="mes-btn" onclick="mudarMes('Setembro')">Setembro</button>
+                <button class="mes-btn" onclick="mudarMes('Outubro')">Outubro</button>
+                <button class="mes-btn" onclick="mudarMes('Novembro')">Novembro</button>
+                <button class="mes-btn" onclick="mudarMes('Dezembro')">Dezembro</button>
+            </div>
+            <input type="hidden" id="filtroMes" value="">
+        </div>
+
+        <div id="resumo"></div>
+        <div id="lista"></div>
+
+        <footer class="bank-footer">
+            <button class="btn-action" onclick="exportarExcel()">📊 Exportar</button>
+            <label for="importarFile" class="btn-action" style="cursor: pointer;">📥 Importar</label>
+            <input type="file" id="importarFile" accept=".xlsx, .xls, .csv" onchange="importarExcel(this)" style="display: none;">
+            <button class="btn-action" onclick="logout()" style="color: #ff4d4d;">🚪 Sair</button>
+        </footer>
+    </main>
+
+    <div class="floating-group" style="display: flex; flex-direction: column; gap: 15px; align-items: center;">
+    
+
+
+    <button class="btn-float" onclick="toggleDarkMode()">🌙</button>
+
+    <div style="position: relative; display: flex; align-items: center;">
+        
+        <div id="menuFixosOpcoes" style="display: none; position: absolute; right: 60px; flex-direction: row; gap: 10px; white-space: nowrap;">
+            <button class="btn-float-mini" onclick="lancarContasFixas()" title="Lançar no Mês">🔄</button>
+            <button class="btn-float-mini" onclick="abrirGerenciadorFixos()" title="Gerenciar Modelos">📝</button>
+        </div>
+
+        <button class="btn-float" onclick="toggleMenuFixos()" id="btnMasterFixos" style="z-index: 10;">⚙️</button>
+    </div>
+
+    <button class="btn-float btn-save-main" id="btnSalvar" onclick="salvarNoBanco()">
+        <span>☁️</span><br><small>Salvar</small>
+    </button>
+
+</div>
+
+    <div id="modalLancamento" class="modal-overlay" style="display: none;">
+        <div class="modal-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: var(--inter-orange); margin: 0;">Novo Lançamento</h3>
+                <button onclick="fecharModal()" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
+            </div>
+            
+            <div class="form-vertical">
+                <label class="bank-label">Descrição</label>
+                <input id="desc" type="text" placeholder="Ex: Mercado, Aluguel...">
+                
+                <label class="bank-label">Valor (R$)</label>
+                <input id="valor" type="number" step="0.01" placeholder="0,00">
+                
+                <label class="bank-label">Categoria</label>
+                <select id="cat">
+                    <option value="Entrada">💰 Entrada</option>
+                    <option value="Necessidades">🏠 Necessidades</option>
+                    <option value="Pessoal">🛒 Pessoal</option>
+                    <option value="Guardar">🏦 Guardar (Caixinha)</option>
+                </select>
+                
+                <label class="bank-label">Origem / Método</label>
+                <select id="origem">
+                    <option value="Pagamento">💳 Pagamento (Saldo)</option>
+                    <option value="Adiantamento">💵 Adiantamento (Saldo)</option>
+                    <option value="Crédito-Pag">✨ Crédito (Saldo Pagamento)</option>
+                    <option value="Crédito-Adi">✨ Crédito (Saldo Adiantamento)</option>
+                </select>
+                
+                <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 15px;" onclick="adicionarComModal()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalConfirmarExclusao" class="modal-overlay" style="display:none; z-index:30000; backdrop-filter: blur(5px);">
+        <div class="modal-card" style="max-width: 320px; text-align: center;">
+            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+            <h3 style="color: #fff; margin-bottom: 10px;">Excluir Item?</h3>
+            <p style="color: #888; font-size: 14px; margin-bottom: 20px;">Esta ação removerá o registro permanentemente.</p>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="fecharConfirmacao()" style="flex: 1; padding: 12px; background: #333; border-radius: 8px; color: white; border: none; cursor: pointer;">Cancelar</button>
+                <button id="btnConfirmarDeletar" style="flex: 1; padding: 12px; background: #ff4d4d; border-radius: 8px; color: white; border: none; cursor: pointer;">Excluir</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-sucesso">
+        <img src="https://media.tenor.com/AWKzZ19awFYAAAAi/checkmark-transparent.gif" class="toast-icon" alt="Sucesso">
+        <div>
+            <strong style="display: block; color: #2ECC71; font-size: 14px;">Sucesso!</strong>
+            <span style="font-size: 12px; color: #ccc;">Dados atualizados com êxito.</span>
+        </div>
+    </div>
+
+    <div id="modalConfigFixos" class="modal-overlay" style="display: none;">
+    <div class="modal-card" style="max-width: 450px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="color: var(--inter-orange); margin: 0;">⚙️ Modelos de Gastos Fixos</h3>
+            <button onclick="fecharModalFixos()" class="btn-clear" style="color:#fff; font-size:24px;">&times;</button>
+        </div>
+        
+        <div id="listaModelosFixos" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
+            </div>
+
+        <div class="form-vertical" style="border-top: 1px solid #333; padding-top: 15px;">
+            <h4 style="font-size: 12px; color: var(--inter-orange); margin-bottom: 10px;">ADICIONAR NOVO MODELO</h4>
+            <input id="fixoDesc" type="text" placeholder="Nome (Ex: Aluguel)">
+            <input id="fixoValor" type="number" step="0.01" placeholder="Valor Padrão">
+            <button class="btn-primary" onclick="adicionarNovoModeloFixo()">+ Adicionar aos Modelos</button>
+        </div>
+    </div>
+</div>
+
+    <script src="script.js"></script>
+</body>
+</html>

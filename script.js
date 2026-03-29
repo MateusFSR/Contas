@@ -312,34 +312,39 @@ function aplicarModoFurtivo() {
 function adicionar() {
     const desc = document.getElementById("desc");
     const valor = document.getElementById("valor");
-    const cat = document.getElementById("cat"); // O ID do seletor de Categoria
-    const origem = document.getElementById("origem"); // O ID do seletor de Origem
+    const cat = document.getElementById("cat"); 
+    const origem = document.getElementById("origem"); 
     const mes = document.getElementById("filtroMes").value;
+    const check = document.getElementById("checkPrevisto"); // Captura o elemento
 
     if (!desc.value || !valor.value) {
         alert("Preencha a descrição e o valor!");
         return;
     }
 
+    // Se o check existe e está marcado, pago = false. Caso contrário, pago = true.
+    const statusPago = check ? !check.checked : true;
+
     const novoItem = {
         id: Date.now(),
         desc: desc.value,
         valor: parseFloat(valor.value),
-        cat: cat.value,    // Salva como "cat"
-        origem: origem.value, // Salva como "origem"
-        pago: true,        // Importante para as metas contarem o gasto
+        cat: cat.value,
+        origem: origem.value,
+        pago: statusPago, 
         dataCriacao: new Date().toISOString()
     };
 
     if (!dados[mes]) dados[mes] = [];
     dados[mes].push(novoItem);
     
+    // Limpeza
     desc.value = "";
     valor.value = "";
+    if (check) check.checked = false; 
     
     localStorage.setItem("dados", JSON.stringify(dados));
     render();
-    if (typeof salvarNoBanco === "function") salvarNoBanco();
 }
 
 let indexParaRemover = null; // Variável global temporária
@@ -726,44 +731,44 @@ function mostrarToastSucesso() {
 }
 
 function adicionarComModal() {
-    const descInput = document.getElementById("desc");
-    const valorInput = document.getElementById("valor");
-    const cat = document.getElementById("cat").value;
-    const origem = document.getElementById("origem").value;
-    const mesAtual = document.getElementById("filtroMes").value;
-    const isPrevisto = document.getElementById("checkPrevisto").checked; // Pega o estado do checkbox
+    const desc = document.getElementById("desc");
+    const valor = document.getElementById("valor");
+    const cat = document.getElementById("cat"); 
+    const origem = document.getElementById("origem"); 
+    const mes = document.getElementById("filtroMes").value;
+    const check = document.getElementById("checkPrevisto"); 
 
-    const desc = descInput.value;
-    const valor = parseFloat(valorInput.value);
-
-    if (!desc || isNaN(valor)) {
-        alert("Preencha os campos corretamente!");
+    if (!desc.value || !valor.value) {
+        alert("Preencha a descrição e o valor!");
         return;
     }
 
+    // Se o checkbox está marcado, 'pago' é false.
+    const statusPago = check && check.checked ? false : true;
+
     const novoItem = {
-        id: Date.now().toString(),
-        // Se for previsto, adiciona a tag no nome para facilitar a identificação visual
-        desc: isPrevisto ? `[PREVISTO] ${desc}` : desc,
-        valor: valor,
-        cat: cat,
-        origem: origem,
-        pago: !isPrevisto, // Se checkado (true), pago vira false. Se desmarcado (false), pago vira true.
+        id: Date.now().toString(), // Usando string para evitar problemas de tipos
+        desc: desc.value,
+        valor: parseFloat(valor.value),
+        cat: cat.value,
+        origem: origem.value,
+        pago: statusPago, 
         dataCriacao: new Date().toISOString()
     };
 
-    if (!dados[mesAtual]) dados[mesAtual] = [];
-    dados[mesAtual].push(novoItem);
+    if (!dados[mes]) dados[mes] = [];
+    dados[mes].push(novoItem);
     
-    // Limpa os campos e fecha o modal
-    descInput.value = "";
-    valorInput.value = "";
-    document.getElementById("checkPrevisto").checked = false;
-
-    fecharModal();
+    // Limpar e fechar
+    desc.value = "";
+    valor.value = "";
+    if (check) check.checked = false; 
+    
+    fecharModal(); // Fecha o modal após adicionar
+    
+    localStorage.setItem("dados", JSON.stringify(dados));
     render();
-    salvarDados(); // Sincroniza local e Supabase
-    mostrarToastSucesso();
+    if (typeof salvarNoBanco === "function") salvarNoBanco();
 }
 
 function abrirDashboard() {
@@ -1132,30 +1137,15 @@ async function executarRemocao() {
     mostrarToastSucesso("Lançamento removido!");
 }
 
-async function confirmarPagamentoDireto(event, id) {
-    // ESSA LINHA É A MAIS IMPORTANTE:
-    // Ela impede que o clique "suba" para a linha e abra o modal de edição
-    event.stopPropagation();
-
+function confirmarPagamentoDireto(event, id) {
+    event.stopPropagation(); // Não abre o modal de edição
     const mes = document.getElementById("filtroMes").value;
     
-    // Procura o item (garantindo comparação de ID correta)
     const item = dados[mes].find(i => i.id == id);
-    
     if (item) {
-        // Altera o status
         item.pago = true;
-        
-        // Limpa o nome (opcional, se você quiser manter o [PREVISTO] remova a linha abaixo)
-        item.desc = item.desc.replace("[PREVISTO] ", "").trim();
-        
-        // Salva localmente e no Supabase
-        await salvarDados(); 
-        
-        // Atualiza a tela na hora
+        localStorage.setItem("dados", JSON.stringify(dados));
         render();
-        
-        // Feedback visual
-        mostrarToastSucesso("Pagamento confirmado!");
+        if (typeof mostrarToast === "function") mostrarToast();
     }
 }

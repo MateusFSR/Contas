@@ -304,8 +304,8 @@ function aplicarModoFurtivo() {
 function adicionar() {
     const desc = document.getElementById("desc");
     const valor = document.getElementById("valor");
-    const cat = document.getElementById("cat");
-    const origem = document.getElementById("origem");
+    const cat = document.getElementById("cat"); // O ID do seletor de Categoria
+    const origem = document.getElementById("origem"); // O ID do seletor de Origem
     const mes = document.getElementById("filtroMes").value;
 
     if (!desc.value || !valor.value) {
@@ -317,8 +317,9 @@ function adicionar() {
         id: Date.now(),
         desc: desc.value,
         valor: parseFloat(valor.value),
-        cat: cat.value,
-        origem: cat.value === "Entrada" ? null : (origem ? origem.value : "Pagamento"),
+        cat: cat.value,    // Salva como "cat"
+        origem: origem.value, // Salva como "origem"
+        pago: true,        // Importante para as metas contarem o gasto
         dataCriacao: new Date().toISOString()
     };
 
@@ -330,6 +331,7 @@ function adicionar() {
     
     localStorage.setItem("dados", JSON.stringify(dados));
     render();
+    if (typeof salvarNoBanco === "function") salvarNoBanco();
 }
 
 let indexParaRemover = null; // Variável global temporária
@@ -349,20 +351,14 @@ function executarRemocao() {
     if (indexParaRemover !== null) {
         const mesAtual = document.getElementById("filtroMes").value;
         
-        // Remove do array
         dados[mesAtual].splice(indexParaRemover, 1);
         
-        // Salva no LocalStorage para não perder
         localStorage.setItem("dados", JSON.stringify(dados));
-        
-        // Fecha o modal e limpa a variável
         fecharConfirmacao();
-        
-        // Atualiza a tela
         render();
         
-        // MOSTRA O CHECKMARK ANIMADO NO TOAST!
         mostrarToastSucesso("Lançamento removido!");
+        salvarNoBanco(); // <--- ADICIONADO: Salva no Supabase após remover
     }
 }
 
@@ -370,6 +366,8 @@ function fecharConfirmacao() {
     document.getElementById("modalConfirmarExclusao").style.display = "none";
     indexParaRemover = null;
 }
+
+let timeoutAutoSave;
 
 function editarCampo(index, campo, novoValor) {
     const mes = document.getElementById("filtroMes").value;
@@ -379,6 +377,12 @@ function editarCampo(index, campo, novoValor) {
         dados[mes][index][campo] = novoValor;
     }
     localStorage.setItem("dados", JSON.stringify(dados));
+    
+    // Lógica de Auto-salvamento com delay de 1.5s para não travar o banco
+    clearTimeout(timeoutAutoSave);
+    timeoutAutoSave = setTimeout(() => {
+        salvarNoBanco();
+    }, 1500);
 }
 
 // ==========================================================================
@@ -675,6 +679,7 @@ function adicionarComModal() {
     // Limpa os campos
     document.getElementById("desc").value = "";
     document.getElementById("valor").value = "";
+    
 }
 
 function abrirDashboard() {
@@ -756,18 +761,79 @@ function ativarDragAndDrop() {
 
 function toggleMetasFlutuante() {
     const modal = document.getElementById("modalMetas");
-    if (modal) {
-        if (modal.style.display === "none" || modal.style.display === "") {
-            modal.style.display = "flex";
-            // Garante que o scroll do corpo trave ao abrir o modal
-            document.body.style.overflow = "hidden";
-        } else {
-            modal.style.display = "none";
-            document.body.style.overflow = "auto";
-        }
-    } else {
+    
+    if (!modal) {
         console.error("Erro: Elemento #modalMetas não encontrado no DOM.");
+        return;
     }
+
+    if (modal.style.display === "none" || modal.style.display === "") {
+        renderizarMetasDetalhadas(); // Chama a função que calcula as barras
+        modal.style.display = "flex";
+    } else {
+        modal.style.display = "none";
+    }
+}
+
+function renderizarMetasDetalhadas() {
+    const container = document.getElementById("conteudoMetas");
+    if (!container) return;
+
+    const mes = document.getElementById("filtroMes").value;
+    
+    let pagIn = 0, adiIn = 0;
+    let gastos = {
+        Pagamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 },
+        Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
+    };
+
+    if (!dados[mes]) return;
+
+    dados[mes].forEach(item => {
+        const valor = parseFloat(item.valor) || 0;
+        const categoria = item.cat ? item.cat.toLowerCase() : ""; 
+        const origem = item.origem ? item.origem.toLowerCase() : ""; 
+
+        // 1. ENTRADAS (Ajustado para "pag" e "adi")
+        if (categoria.includes("entrada")) {
+            const desc = item.desc ? item.desc.toLowerCase() : "";
+            if (origem.includes("pag") || desc.includes("pag")) {
+                pagIn += valor;
+            } else if (origem.includes("adi") || desc.includes("adi")) {
+                adiIn += valor;
+            }
+        } 
+        
+        // 2. GASTOS (Ajustado para identificar "Crédito-Pag" e "Crédito-Adi")
+        else if (item.pago !== false) {
+            let alvo = null;
+            
+            // Se a origem tiver "pag", vai para o bloco de Pagamento
+            if (origem.includes("pag")) {
+                alvo = gastos.Pagamento;
+            } 
+            // Se a origem tiver "adi", vai para o bloco de Adiantamento
+            else if (origem.includes("adi")) {
+                alvo = gastos.Adiantamento;
+            }
+
+            if (alvo) {
+                // Identifica a categoria
+                if (categoria.includes("pessoal")) {
+                    alvo.Pessoal += valor;
+                } else if (categoria.includes("necessidade")) {
+                    alvo.Necessidades += valor;
+                } else if (categoria.includes("guardar")) {
+                    alvo.Guardar += valor;
+                }
+            }
+        }
+    });
+
+    container.innerHTML = `
+        ${renderizarBlocoMeta("Metas Pagamento", pagIn, gastos.Pagamento)}
+        ${renderizarBlocoMeta("Metas Adiantamento", adiIn, gastos.Adiantamento)}
+    `;
 }
 
 function initSortable() {
@@ -788,6 +854,11 @@ function initSortable() {
             // Salva a nova ordem e atualiza a tela
             localStorage.setItem("dados", JSON.stringify(dados));
             render(); 
+
+            // NOVO: Sincroniza a nova ordem com o Supabase automaticamente
+            if (typeof salvarNoBanco === "function") {
+                salvarNoBanco();
+            }
         }
     });
 }

@@ -243,30 +243,38 @@ function removerModeloFixo(index) {
     renderizarListaModelos();
 }
 
-// LANÇAR NO MÊS (Agora usando os modelos dinâmicos)
 async function lancarContasFixas() {
     const mes = document.getElementById("filtroMes").value;
     
     if (modelosFixos.length === 0) {
-        alert("Nenhum modelo de gasto fixo cadastrado. Vá em configurações!");
+        alert("Nenhum modelo cadastrado!"); // Aqui pode manter alert ou usar um Toast de erro
         return;
     }
 
-    if (confirm(`Lançar ${modelosFixos.length} gastos previstos em ${mes}?`)) {
-        modelosFixos.forEach(c => {
-            dados[mes].push({
-                id: Date.now() + Math.random(),
-                desc: `[PREVISTO] ${c.desc}`,
-                valor: c.valor,
-                cat: c.cat,
-                origem: c.origem,
-                pago: false, // Entra sem descontar do saldo
-                dataCriacao: new Date().toISOString()
-            });
+    // REMOVIDO: if (confirm(...))
+    // NOVA LÓGICA: Executa direto ou você pode abrir um modal de "Processando"
+    
+    modelosFixos.forEach(c => {
+        dados[mes].push({
+            id: Date.now() + Math.random(),
+            desc: `[PREVISTO] ${c.desc}`,
+            valor: c.valor,
+            cat: c.cat,
+            origem: c.origem,
+            pago: false,
+            dataCriacao: new Date().toISOString()
         });
-        render();
-        if(typeof salvarNoBanco === "function") salvarNoBanco();
-    }
+    });
+
+    render();
+    await salvarDados();
+    
+    // Feedback visual que substitui a necessidade do popup
+    mostrarToastSucesso(`${modelosFixos.length} gastos fixos lançados!`);
+    
+    // Se o menu de opções estiver aberto, fecha ele
+    const menu = document.getElementById("menuFixosOpcoes");
+    if(menu) menu.classList.remove("aberto");
 }
 
 // 1. Lógica do Modo Furtivo Atualizada
@@ -588,10 +596,16 @@ function render() {
                         <div style="font-size: 12px; color: ${corSuave}">${item.origem || 'Carteira'}</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 14px; font-weight: bold; color: ${isEntrada ? 'var(--green)' : corDinamica}">
-                            ${isEntrada ? '' : '-'} R$ ${parseFloat(item.valor).toFixed(2)}
-                        </div>
-                        ${isPrevisto ? '<span style="font-size: 9px; color: var(--inter-orange)">PENDENTE</span>' : ''}
+                    <div style="font-size: 14px; font-weight: bold; color: ${isEntrada ? 'var(--green)' : corDinamica}">
+                        ${isEntrada ? '' : '-'} R$ ${parseFloat(item.valor).toFixed(2)}
+                    </div>
+                    ${isPrevisto ? `
+                        <button 
+                            onclick="confirmarPagamentoDireto(event, '${item.id}')" 
+                            style="background: none; border: 1px solid var(--inter-orange); color: var(--inter-orange); font-size: 9px; padding: 2px 5px; border-radius: 4px; cursor: pointer; margin-top: 4px;">
+                            PENDENTE
+                        </button>
+                    ` : ''}
                     </div>
                     <div style="margin-left: 15px; color: var(--inter-orange); font-size: 12px;">❯</div>
                 </div>
@@ -990,27 +1004,26 @@ window.addEventListener('click', function(e) {
 });
 
 function abrirEdicao(id) {
-    console.log("Tentando abrir ID:", id);
     const mesAtual = document.getElementById("filtroMes").value;
-    
-    // Procura o item no array do mês atual
     const item = dados[mesAtual].find(i => i.id == id);
-    
-    if (!item) {
-        console.error("Item não encontrado no array 'dados'");
-        return;
-    }
 
-    // Preenche os campos do modal
-    document.getElementById("editId").value = item.id;
-    document.getElementById("editDesc").value = item.desc;
-    document.getElementById("editValor").value = item.valor;
-    document.getElementById("editCat").value = item.cat;
-    document.getElementById("editOrigem").value = item.origem || "Pagamento";
-    
-    // Força a exibição do modal
-    const modal = document.getElementById("modalEdicao");
-    modal.style.setProperty('display', 'flex', 'important');
+    if (item) {
+        document.getElementById("editId").value = item.id;
+        document.getElementById("editDesc").value = item.desc;
+        document.getElementById("editValor").value = item.valor;
+        document.getElementById("editCat").value = item.cat;
+        document.getElementById("editOrigem").value = item.origem || "Carteira";
+        
+        // MOSTRAR OU ESCONDER BOTÃO DE PAGAR
+        const btnPagar = document.getElementById("btnPagarAgora");
+        if (item.pago === false) {
+            btnPagar.style.display = "block";
+        } else {
+            btnPagar.style.display = "none";
+        }
+
+        document.getElementById("modalEdicao").style.display = "flex";
+    }
 }
 
 ///EXTRATO
@@ -1067,18 +1080,65 @@ async function salvarEdicao() {
     }
 }
 
-async function removerItemEdicao() {
+// 1. Acionado pelo botão de lixeira no modal de Edição
+function removerItemEdicao() {
+    // Em vez de confirm(), apenas abrimos o modal de confirmação interno
     const id = document.getElementById("editId").value;
-    const mesAtual = document.getElementById("filtroMes").value;
+    indexParaRemover = id; // Usamos o ID como referência
+    
+    // Esconde o modal de edição para não sobrepor
+    fecharModalEdicao();
+    
+    // Abre o modal de confirmação do próprio site
+    const modalConfirm = document.getElementById("modalConfirmarExclusao");
+    if(modalConfirm) {
+        modalConfirm.style.display = "flex";
+        // Configuramos o botão de "Sim" para chamar a execução final
+        document.getElementById("btnConfirmarDeletar").onclick = executarRemocao;
+    }
+}
 
-    if (confirm("Deseja realmente excluir este lançamento?")) {
-        // Remove o item do array local
-        dados[mesAtual] = dados[mesAtual].filter(i => i.id != id);
+async function executarRemocao() {
+    const mesAtual = document.getElementById("filtroMes").value;
+    const idParaRemover = indexParaRemover;
+
+    // Filtra o array removendo o item com aquele ID
+    dados[mesAtual] = dados[mesAtual].filter(item => item.id != idParaRemover);
+    
+    // Fecha o modal de confirmação
+    fecharConfirmacao();
+    
+    // Salva e atualiza a tela
+    await salvarDados(); 
+    render();
+    
+    mostrarToastSucesso("Lançamento removido!");
+}
+
+async function confirmarPagamentoDireto(event, id) {
+    // ESSA LINHA É A MAIS IMPORTANTE:
+    // Ela impede que o clique "suba" para a linha e abra o modal de edição
+    event.stopPropagation();
+
+    const mes = document.getElementById("filtroMes").value;
+    
+    // Procura o item (garantindo comparação de ID correta)
+    const item = dados[mes].find(i => i.id == id);
+    
+    if (item) {
+        // Altera o status
+        item.pago = true;
         
-        fecharModalEdicao();
+        // Limpa o nome (opcional, se você quiser manter o [PREVISTO] remova a linha abaixo)
+        item.desc = item.desc.replace("[PREVISTO] ", "").trim();
         
-        // Persiste a remoção
-        await salvarDados();
+        // Salva localmente e no Supabase
+        await salvarDados(); 
+        
+        // Atualiza a tela na hora
         render();
+        
+        // Feedback visual
+        mostrarToastSucesso("Pagamento confirmado!");
     }
 }

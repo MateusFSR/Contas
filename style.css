@@ -1,17 +1,20 @@
 /* ==========================================================================
-VARIAVEIS E TEMA (PALETA BANCO INTER)
-========================================================================== */
+   1. VARIÁVEIS E TEMAS (SISTEMA DINÂMICO)
+   ========================================================================== */
 :root {
     --inter-orange: #FF7A00;
     --inter-orange-hover: #E66E00;
+    --green: #2ECC71;
+    --red: #E74C3C;
+    --blue: #3b82f6;
+
+    /* Tema Claro (Padrão) */
     --inter-bg: #F5F6FA;
     --inter-card: #FFFFFF;
     --inter-text: #2D3436;
     --inter-gray: #888888;
     --inter-border: #E0E0E0;
-    --green: #2ECC71;
-    --red: #E74C3C;
-    --blue: #3b82f6;
+    --icon-bg: rgba(0, 0, 0, 0.05);
     --shadow: 0 10px 25px rgba(0,0,0,0.05);
     --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -22,31 +25,24 @@ body.dark-mode {
     --inter-text: #F5F6FA;
     --inter-border: #333333;
     --inter-gray: #AAAAAA;
+    --icon-bg: #252525;
 }
 
 /* ==========================================================================
-RESET E CONFIGURAÇÕES GERAIS
-========================================================================== */
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+   2. RESET E ESTRUTURA
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
     background-color: var(--inter-bg);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Inter', sans-serif;
     color: var(--inter-text);
-    line-height: 1.6;
     padding: 20px;
+    padding-top: 90px; /* Espaço para o header fixo */
     transition: var(--transition);
 }
 
-.container {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding-bottom: 120px;
-}
+.container { max-width: 1100px; margin: 0 auto; padding-bottom: 120px; }
 
 h2, h3, h4 {
     margin-bottom: 15px;
@@ -63,6 +59,7 @@ CARDS E LAYOUT DE GRADE
     box-shadow: var(--shadow);
     border: 1px solid var(--inter-border);
     margin-bottom: 25px;
+    color: var(--inter-text);
     transition: var(--transition);
 }
 
@@ -75,29 +72,23 @@ CARDS E LAYOUT DE GRADE
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 15px;
-    margin-bottom: 25px;
 }
 
-.bank-card.full {
-    grid-column: 1 / span 2;
-    border-left: 8px solid var(--inter-orange);
-}
+.bank-card.full { grid-column: 1 / span 2; border-left: 8px solid var(--inter-orange); }
 
 /* ==========================================================================
 ELEMENTOS DE VALOR E LABELS
 ========================================================================== */
 .bank-label {
-    display: block;
     color: var(--inter-gray);
     font-size: 13px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    display: block;
+    margin-bottom: 5px;
 }
 
 .bank-value {
-    display: block;
     font-size: 32px;
     font-weight: 800;
     color: var(--inter-orange);
@@ -272,10 +263,11 @@ BARRAS DE PROGRESSO (METAS) - IGUAL AO CÓDIGO 1
 }
 
 .bank-progress-bg {
-    height: 12px;
-    background: #E0E0E0;
-    border-radius: 6px;
+    height: 10px;
+    background: var(--inter-border);
+    border-radius: 5px;
     overflow: hidden;
+    margin: 8px 0;
 }
 
 body.dark-mode .bank-progress-bg {
@@ -285,8 +277,7 @@ body.dark-mode .bank-progress-bg {
 .bank-progress-fill {
     height: 100%;
     background: var(--inter-orange);
-    border-radius: 6px;
-    transition: width 1s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: width 1s ease-in-out;
 }
 
 small {
@@ -302,28 +293,18 @@ BOTÕES FLUTUANTES (DIREITA)
 ========================================================================== */
 .floating-group {
     position: fixed;
-    right: 25px;
-    bottom: 25px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    z-index: 1000;
+    bottom: 25px; right: 25px;
+    display: flex; flex-direction: row-reverse;
+    align-items: center; gap: 15px;
 }
 
 .btn-float {
-    width: 60px;
-    height: 60px;
+    width: 60px; height: 60px;
     border-radius: 50%;
-    background: var(--inter-card);
-    border: 1px solid var(--inter-border);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    background: var(--inter-orange);
+    color: white; border: none;
     cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: var(--inter-text);
-    transition: var(--transition);
+    box-shadow: 0 8px 20px rgba(255, 122, 0, 0.3);
 }
 
 .btn-float:hover {
@@ -443,35 +424,8 @@ MODAL DASHBOARD
 RESPONSIVIDADE
 ========================================================================== */
 @media (max-width: 768px) {
-    .bank-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .bank-card.half {
-        grid-column: span 1;
-    }
-
-    .meta-container {
-        grid-template-columns: 1fr;
-    }
-
-    .bank-value {
-        font-size: 28px;
-    }
-
-    .floating-group {
-        right: 15px;
-        bottom: 15px;
-    }
-
-    .btn-float {
-        width: 55px;
-        height: 55px;
-    }
-
-    .modal-content {
-        padding: 20px;
-    }
+    .bank-grid, #conteudoMetas { grid-template-columns: 1fr; flex-direction: column; }
+    .bank-card.full > div { flex-direction: column !important; }
 }
 
 .display-flex-row {
@@ -508,16 +462,12 @@ RESPONSIVIDADE
 /* Fundo escuro que cobre a tela toda */
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85); /* Preto com 85% de transparência */
-    display: none; /* Escondido por padrão */
-    justify-content: center;
-    align-items: center;
-    z-index: 10000; /* Valor alto para ficar na frente de tudo */
-    backdrop-filter: blur(5px); /* Efeito de desfoque no fundo igual ao Inter */
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: none; /* Controlado pelo JS */
+    justify-content: center; align-items: center;
+    z-index: 10000;
+    backdrop-filter: blur(5px);
 }
 
 /* O card branco/escuro onde ficam os inputs */
@@ -674,18 +624,16 @@ RESPONSIVIDADE
 /* --- CABEÇALHO PREMIUM MINIMALISTA --- */
 .bank-header-main {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: #121212; /* Fundo preto profundo */
-    border-bottom: 1px solid #222;
+    top: 0; left: 0; width: 100%;
+    background: var(--inter-card);
+    border-bottom: 1px solid var(--inter-border);
     z-index: 1000;
     padding: 15px 0;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    box-shadow: var(--shadow);
 }
 
-.bank-header-main .header-container {
-    max-width: 1000px;
+.header-container {
+    max-width: 1100px;
     margin: 0 auto;
     padding: 0 25px;
     display: flex;
@@ -830,32 +778,23 @@ RESPONSIVIDADE
 
 /* Caixa interna do modal - Aumentei a largura máxima */
 .modal-content-metas {
-    background-color: #1a1a1a;
+    background: var(--inter-card);
     padding: 30px;
-    border-radius: 15px;
-    width: 90%;
-    max-width: 900px; /* Aumentado para caber lado a lado */
-    max-height: 85vh;
-    overflow-y: auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 1px solid #333;
-    transition: all 0.3s ease;
+    border-radius: 20px;
+    width: 90%; max-width: 900px;
+    color: var(--inter-text);
 }
 
 /* --- A MÁGICA DO LAYOUT HORIZONTAL --- */
 #conteudoMetas {
-    display: flex; /* Transforma em Flexbox */
-    flex-direction: row; /* Alinha em linha (horizontal) */
-    justify-content: space-between; /* Espaço entre as colunas */
-    gap: 30px; /* Espaço em pixels entre os blocos */
-    margin-top: 20px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 30px;
 }
 
 /* Ajuste individual para cada bloco de meta (Pagamento e Adiantamento) */
-#conteudoMetas > div {
-    flex: 1; /* Faz cada bloco ocupar 50% da largura disponível */
-    min-width: 280px; /* Largura mínima para mobile não esmagar */
-}
+#conteudoMetas > div { flex: 1; min-width: 280px; }
 
 /* Responsividade: Se a tela for pequena, volta a empilhar */
 @media (max-width: 768px) {
@@ -867,4 +806,146 @@ RESPONSIVIDADE
     .modal-content-metas {
         max-width: 450px; /* Volta para o tamanho original no mobile */
     }
+}
+
+/* --- ESTILO EXTRATO BANCÁRIO --- */
+.container-extrato {
+    background-color: transparent; /* Remove o preto fixo */
+}
+
+.grupo-data {
+    margin-top: 25px;
+}
+
+.cabecalho-data {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #1a1a1a;
+    margin-bottom: 15px;
+}
+
+.data-texto {
+    font-size: 16px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.saldo-dia, .detalhes-origem {
+    font-size: 13px;
+    color:var(--inter-gray);
+}
+
+/* Linha da Transação */
+.item-transacao {
+    display: flex;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--inter-border);
+    cursor: pointer;
+}
+
+.item-transacao:hover { background: rgba(127, 127, 127, 0.05); }
+
+.icone-categoria {
+    width: 45px; height: 45px;
+    background: var(--icon-bg);
+    border-radius: 50%;
+    display: flex; justify-content: center; align-items: center;
+    margin-right: 15px;
+    color: var(--inter-text); /* Cor dinâmica */
+    border: 1px solid var(--inter-border);
+}
+
+.titulo-transacao, .data-texto { font-size: 14px; font-weight: 500; color: var(--inter-text) !important; }
+.valor-transacao { font-size: 15px; font-weight: bold; color: var(--inter-text); }
+.valor-positivo { color: var(--green) !important; }
+.detalhes-origem { font-size: 12px; color: var(--inter-gray); }
+
+.seta-detalhes {
+    color: var(--inter-orange);
+    font-size: 18px;
+    margin-left: 10px;
+}
+
+/* Ajuste da Box Principal do Modal */
+.bank-card {
+    box-sizing: border-box !important;
+    padding: 30px !important; /* Aumenta o respiro interno da caixa toda */
+}
+
+/* Ajuste dos Inputs e Selects */
+.input-transparente {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid var(--inter-border) !important;
+    
+    /* SOLUÇÃO PARA O "COLADO": Adiciona respiro na esquerda e direita */
+    padding: 12px 15px !important; 
+    
+    color: var(--inter-text) !important;
+    outline: none !important; /* REMOVE O CONTORNO LARANJA AO CLICAR */
+    transition: all 0.2s ease;
+}
+
+/* Remove qualquer contorno ou borda extra no estado de foco */
+.input-transparente:focus, 
+.input-transparente:active,
+select.input-transparente:focus {
+    outline: none !important;
+    box-shadow: none !important;
+    /* Se quiser que a linha de baixo mude de cor, mantenha abaixo, 
+       caso contrário, mude para var(--inter-border) */
+    border-bottom: 1px solid var(--inter-border) !important; 
+}
+
+/* Ajuste das Labels para alinhar com o novo padding do input */
+.bank-label {
+    display: block !important;
+    margin-bottom: 5px !important;
+    padding-left: 15px !important; /* Alinha o título com o texto interno do input */
+    color: var(--inter-gray) !important;
+    font-size: 12px !important;
+}
+
+/* Ajuste dos botões para não colarem nas laterais */
+.bank-card div[style*="display:flex"] {
+    padding: 10px 15px 0 15px !important;
+}
+
+
+
+/* Força a visibilidade do X no Modo Claro */
+.bank-card button[onclick*="fechar"], 
+.btn-clear,
+.btn-close-modal {
+    color: #2d2d2d !important; /* Cinza grafite bem visível no fundo branco */
+    background: transparent !important;
+    border: none !important;
+    font-size: 26px !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    opacity: 1 !important; /* Garante que não esteja semi-transparente */
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* Aplica o branco APENAS se o container pai for escuro */
+.dark-mode .bank-card button[onclick*="fechar"],
+.dark-mode .btn-clear {
+    color: #ffffff !important;
+}
+
+/* Remove qualquer efeito visual de clique (o "em torno" laranja/azul) */
+.bank-card button:focus,
+.bank-card button:active {
+    outline: none !important;
+    border: none !important;
+    background: none !important;
 }

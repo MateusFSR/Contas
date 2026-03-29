@@ -402,43 +402,29 @@ function render() {
 
     if (!dados[mesAtualNome]) dados[mesAtualNome] = [];
 
+    // Ajuste de layout para o header fixo
     const header = document.querySelector(".bank-header-main");
-    const container = document.querySelector(".container");
-    if (header && container) {
-        container.style.marginTop = (header.offsetHeight + 10) + "px";
+    const containerMain = document.querySelector(".container");
+    if (header && containerMain) {
+        containerMain.style.marginTop = (header.offsetHeight + 10) + "px";
     }
 
     let totalEntradas = 0, totalSaidas = 0, pagIn = 0, adiIn = 0;
     let limiteUsadoNoMes = 0;
     
-    let gastosMeta = {
-        Pagamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 },
-        Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
-    };
-
+    // 1. CÁLCULOS
     dados[mesAtualNome].forEach(item => {
+        const valor = parseFloat(item.valor) || 0;
         if (item.cat === "Entrada") {
-            totalEntradas += item.valor;
-            if (item.desc.toLowerCase().includes("pagamento")) pagIn += item.valor;
-            if (item.desc.toLowerCase().includes("adiantamento")) adiIn += item.valor;
+            totalEntradas += valor;
+            const desc = item.desc.toLowerCase();
+            if (desc.includes("pagamento")) pagIn += valor;
+            if (desc.includes("adiantamento")) adiIn += valor;
         } else {
-            // SÓ SOMA NA SAÍDA SE ESTIVER PAGO (pago não for false)
             if (item.pago !== false) {
-                totalSaidas += item.valor;
-                
-                if (item.origem === "Crédito-Pag") {
-                    limiteUsadoNoMes += item.valor;
-                    gastosMeta.Pagamento.Pessoal += item.valor;
-                } 
-                else if (item.origem === "Crédito-Adi") {
-                    limiteUsadoNoMes += item.valor;
-                    gastosMeta.Adiantamento.Pessoal += item.valor;
-                }
-                else {
-                    let ori = item.origem || "Pagamento";
-                    if (gastosMeta[ori] && gastosMeta[ori][item.cat] !== undefined) {
-                        gastosMeta[ori][item.cat] += item.valor;
-                    }
+                totalSaidas += valor;
+                if (item.origem && item.origem.includes("Crédito")) {
+                    limiteUsadoNoMes += valor;
                 }
             }
         }
@@ -457,21 +443,23 @@ function render() {
     const limiteDisponivel = totalCaixinhaHistorico - limiteUsadoNoMes;
     const porcentagemGastoLimite = totalCaixinhaHistorico > 0 ? (limiteUsadoNoMes / totalCaixinhaHistorico) * 100 : 0;
     const estiloBrilho = porcentagemGastoLimite >= 90 ? `box-shadow: 0 0 15px #ff4d4d; animation: pulseGlow 1.5s infinite alternate;` : '';
+    
+    // CORES CORRIGIDAS: Usando variáveis do CSS sem fixar #fff
+    const corDinamica = "var(--inter-text)"; 
+    const corSuave = "var(--inter-gray)";
 
-    const corDinamica = "var(--text-color, inherit)"; 
-    const corSuave = "var(--inter-gray, #888)";
-
+    // 2. RENDERIZAÇÃO DO RESUMO
     resumo.innerHTML = `
     <div class="bank-grid">
         <div class="bank-card full no-padding">
             <div style="padding: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px;">
-                <div style="flex: 1; min-width: 200px; border-right: 1px solid rgba(128,128,128,0.2); padding-right: 20px;" class="res-border-none">
+                <div style="flex: 1; min-width: 200px; border-right: 1px solid var(--inter-border); padding-right: 20px;" class="res-border-none">
                     <span class="bank-label" style="color: ${corSuave}">SALDO TOTAL EM CONTA</span>
-                    <strong class="bank-value" id="vTotal" style="display: block; font-size: 28px; margin: 5px 0; color: ${corDinamica};">R$ 0,00</strong>
+                    <strong class="bank-value" id="vTotal" style="display: block; font-size: 28px; margin: 5px 0; color: var(--inter-orange);">R$ 0,00</strong>
                     
                     <div style="display: flex; gap: 15px; margin-top: 5px; flex-wrap: wrap;">
                         <button onclick="abrirModal()" style="background: none; border: none; color: var(--inter-orange); font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
-                            <span style="font-size: 18px; line-height: 0; margin-top: -2px;">›</span> novo lançamento
+                            <span style="font-size: 18px; line-height: 0;">›</span> novo lançamento
                         </button>
                         <button onclick="toggleMetasFlutuante()" style="background: none; border: none; color: ${corSuave}; font-weight: 700; font-size: 11px; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 5px; text-transform: lowercase;">
                             <span style="font-size: 14px; line-height: 0;">📊</span> ver metas
@@ -481,10 +469,10 @@ function render() {
                 
                 <div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; align-items: flex-start;">
                     <span class="bank-label" style="color: ${corSuave}">LIMITE DISPONÍVEL (CAIXINHA)</span>
-                    <strong class="bank-value" style="font-size: 24px; margin: 5px 0; color: ${limiteDisponivel < 0 ? '#ff4d4d' : corDinamica}">
+                    <strong class="bank-value" style="font-size: 24px; margin: 5px 0; color: ${limiteDisponivel < 0 ? '#ff4d4d' : 'var(--inter-text)'}">
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
-                    <div style="width: 100%; max-width: 220px; height: 6px; background: rgba(46, 204, 113, 0.2); border-radius: 3px; position: relative; margin-top: 10px;">
+                    <div style="width: 100%; max-width: 220px; height: 6px; background: var(--inter-border); border-radius: 3px; position: relative; margin-top: 10px;">
                         <div style="width: ${Math.min(porcentagemGastoLimite, 100)}%; height: 100%; background: #2ECC71; border-radius: 3px; transition: width 0.5s ease; ${estiloBrilho}"></div>
                     </div>
                 </div>
@@ -504,64 +492,72 @@ function render() {
     </div>
     `;
 
-    let htmlTabela = `
-        <div class="bank-card" style="margin-top:20px">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3 style="font-size: 14px; font-weight: 400; color: ${corDinamica}">Extrato Detalhado</h3>
-                <span style="color:${corSuave}; font-size:11px">${dados[mesAtualNome].length} transações</span>
-            </div>
-            <div class="bank-table-container" style="overflow-x: auto;">
-                <table class="bank-table" style="min-width: 450px;">
-                    <thead>
-                        <tr style="text-align:left; color:${corSuave}; font-size:10px; text-transform: uppercase; letter-spacing: 1px;">
-                            <th style="padding:10px">Descrição</th>
-                            <th style="padding:10px">Valor</th>
-                            <th style="padding:10px">Categoria</th>
-                            <th style="padding:10px; text-align: center;">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabela-corpo">`;
-
-    dados[mesAtualNome].forEach((item, i) => {
-        // Estilo para itens previstos (opacidade menor)
-        const isPrevisto = item.pago === false;
-        const rowStyle = isPrevisto ? `opacity: 0.6; border-left: 3px solid var(--inter-orange);` : "";
-        
-        htmlTabela += `
-            <tr data-id="${i}" style="${rowStyle}">
-                <td><input class="input-transparente" style="width: 100%; color: ${corDinamica}" value="${item.desc}" onchange="editarCampo(${i}, 'desc', this.value)"></td>
-                <td class="${item.cat === 'Entrada' ? 'txt-green' : 'txt-red'}">
-                    R$ <input type="number" step="0.01" class="input-transparente valor-tabela" style="width:70px; color: inherit" value="${item.valor}" onchange="editarCampo(${i}, 'valor', this.value)">
-                </td>
-                <td>
-                    <select class="input-transparente" style="color: ${corDinamica}" onchange="editarCampo(${i}, 'cat', this.value); render();">
-                        <option value="Entrada" ${item.cat === 'Entrada' ? 'selected' : ''}>Entrada</option>
-                        <option value="Necessidades" ${item.cat === 'Necessidades' ? 'selected' : ''}>Necessidades</option>
-                        <option value="Pessoal" ${item.cat === 'Pessoal' ? 'selected' : ''}>Pessoal</option>
-                        <option value="Guardar" ${item.cat === 'Guardar' ? 'selected' : ''}>Guardar</option>
-                    </select>
-                </td>
-                <td style="display: flex; align-items: center; justify-content: center; gap: 12px; padding: 10px;">
-                    ${isPrevisto 
-                        ? `<button onclick="confirmarPagamento('${item.id}')" class="btn-clear" style="color:var(--inter-orange); font-weight:bold; font-size:10px; border:1px solid; padding:2px 5px; border-radius:4px;">PAGAR</button>` 
-                        : `<span style="color:#2ecc71; font-size:12px">✔</span>`
-                    }
-                    <span class="handle" style="cursor: grab; color: ${corSuave}; font-size: 18px; user-select: none;">≡</span>
-                    <button onclick="remover(${i})" class="btn-clear" style="cursor:pointer; color: ${corSuave};">✕</button>
-                </td>
-            </tr>`;
+    // 3. EXTRATO AGRUPADO
+    const agrupadoPorData = {};
+    dados[mesAtualNome].forEach(item => {
+        const dataKey = item.dataCriacao ? item.dataCriacao.split('T')[0] : new Date().toISOString().split('T')[0];
+        if (!agrupadoPorData[dataKey]) agrupadoPorData[dataKey] = [];
+        agrupadoPorData[dataKey].push(item);
     });
 
-    htmlTabela += `</tbody></table></div></div>`;
-    lista.innerHTML = htmlTabela;
+    const datasOrdenadas = Object.keys(agrupadoPorData).sort((a, b) => new Date(b) - new Date(a));
 
-    if (typeof initSortable === "function") initSortable();
+    let htmlExtrato = `
+        <div class="bank-card" style="margin-top:20px; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                <h3 style="font-size: 16px; font-weight: 600; color: ${corDinamica}">Extrato</h3>
+                <span style="color:${corSuave}; font-size:12px">${dados[mesAtualNome].length} lançamentos</span>
+            </div>
+            <div class="container-extrato">`;
+
+    datasOrdenadas.forEach(data => {
+        const transacoesDoDia = agrupadoPorData[data];
+        const dataObj = new Date(data + "T12:00:00");
+        const hoje = new Date().toISOString().split('T')[0];
+        let dataTexto = data === hoje ? "Hoje" : dataObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+
+        htmlExtrato += `
+            <div class="grupo-data">
+                <div class="cabecalho-data" style="border-bottom: 1px solid var(--inter-border); padding-bottom: 8px; margin-bottom: 10px; margin-top: 15px;">
+                    <span style="font-size: 14px; font-weight: bold; color: ${corDinamica}">${dataTexto}</span>
+                </div>
+        `;
+
+        transacoesDoDia.forEach(item => {
+            const isEntrada = item.cat === "Entrada";
+            const isPrevisto = item.pago === false;
+            const icones = {"Pessoal": "🛒", "Necessidades": "🏠", "Guardar": "💰", "Entrada": "💵"};
+            const icone = icones[item.cat] || "📝";
+
+            htmlExtrato += `
+                <div class="item-transacao" onclick="abrirEdicao('${item.id}')" style="display: flex; align-items: center; padding: 12px 0; cursor: pointer; border-bottom: 1px solid var(--inter-border); ${isPrevisto ? 'opacity: 0.5' : ''}">
+                    <div class="icone-circulo" style="width: 40px; height: 40px; background: var(--icon-bg); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; font-size: 18px; border: 1px solid var(--inter-border);">
+                        ${icone}
+                    </div>
+                    <div style="flex-grow: 1;">
+                        <div style="font-size: 14px; color: ${corDinamica}">${item.desc}</div>
+                        <div style="font-size: 12px; color: ${corSuave}">${item.origem || 'Carteira'}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; font-weight: bold; color: ${isEntrada ? 'var(--green)' : corDinamica}">
+                            ${isEntrada ? '' : '-'} R$ ${parseFloat(item.valor).toFixed(2)}
+                        </div>
+                        ${isPrevisto ? '<span style="font-size: 9px; color: var(--inter-orange)">PENDENTE</span>' : ''}
+                    </div>
+                    <div style="margin-left: 15px; color: var(--inter-orange); font-size: 12px;">❯</div>
+                </div>
+            `;
+        });
+        htmlExtrato += `</div>`;
+    });
+
+    htmlExtrato += `</div></div>`;
+    lista.innerHTML = htmlExtrato;
+
     document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome));
-    
-    // O cálculo de saldo enviado para a animação também respeita a regra de PAGO
     animarValoresTela(totalEntradas - totalSaidas, pagIn, adiIn);
-
     aplicarModoFurtivo();
+    ativarDragAndDrop();
 }
 
 // FUNÇÃO COMPLEMENTAR PARA O BOTÃO "PAGAR"
@@ -663,23 +659,27 @@ function mostrarToastSucesso() {
 }
 function adicionarComModal() {
     const desc = document.getElementById("desc").value;
-    const valor = document.getElementById("valor").value;
+    const valor = parseFloat(document.getElementById("valor").value);
+    const cat = document.getElementById("cat").value;
+    const origem = document.getElementById("origem").value;
+    const mesAtual = document.getElementById("filtroMes").value;
 
-    if (!desc || !valor) {
-        // Se quiser, pode criar um toast de erro também, mas por ora:
-        alert("Preencha todos os campos!"); 
-        return;
-    }
+    if (!desc || isNaN(valor)) return alert("Preencha os campos corretamente!");
 
-    adicionar(); // Sua lógica original de salvar
-    
-    fecharModal(); // Fecha o modal de input
-    mostrarToastSucesso(); // MOSTRA A ANIMAÇÃO DO CHECK NO CANTO DA TELA
-    
-    // Limpa os campos
-    document.getElementById("desc").value = "";
-    document.getElementById("valor").value = "";
-    
+    const novoItem = {
+        id: Date.now().toString(), // GERADOR DE ID ÚNICO
+        desc,
+        valor,
+        cat,
+        origem,
+        pago: true,
+        dataCriacao: new Date().toISOString()
+    };
+
+    dados[mesAtual].push(novoItem);
+    salvarDados();
+    fecharModal();
+    render();
 }
 
 function abrirDashboard() {
@@ -743,18 +743,52 @@ function importarExcel(input) {
 }
 
 function ativarDragAndDrop() {
-    const rows = document.querySelectorAll("#tabelaDrag tbody tr");
+    const tbody = document.querySelector("#lista .container-extrato"); // Seleciona o container do extrato
+    if (!tbody) return;
+
+    const rows = tbody.querySelectorAll(".item-transacao");
     let draggedIndex = null;
-    rows.forEach(row => {
-        row.addEventListener("dragstart", (e) => { draggedIndex = e.target.dataset.index; e.target.classList.add("dragging"); });
-        row.addEventListener("dragover", (e) => e.preventDefault());
-        row.addEventListener("drop", (e) => {
-            const targetIndex = e.target.closest("tr").dataset.index;
+
+    rows.forEach((row, index) => {
+        // Torna o item arrastável
+        row.setAttribute("draggable", true);
+        row.dataset.index = index; // Garante que o índice atual está no elemento
+
+        row.addEventListener("dragstart", (e) => {
+            draggedIndex = index;
+            e.currentTarget.classList.add("dragging");
+            // Efeito visual de transparência ao arrastar
+            e.dataTransfer.effectAllowed = "move";
+        });
+
+        row.addEventListener("dragend", (e) => {
+            e.currentTarget.classList.remove("dragging");
+        });
+
+        row.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+        });
+
+        row.addEventListener("drop", async (e) => {
+            e.preventDefault();
+            const targetRow = e.target.closest(".item-transacao");
+            if (!targetRow || draggedIndex === null) return;
+
+            const targetIndex = parseInt(targetRow.dataset.index);
             const mes = document.getElementById("filtroMes").value;
-            const item = dados[mes].splice(draggedIndex, 1)[0];
-            dados[mes].splice(targetIndex, 0, item);
-            localStorage.setItem("dados", JSON.stringify(dados));
-            render();
+
+            if (draggedIndex !== targetIndex) {
+                // 1. Reordena o array localmente
+                const item = dados[mes].splice(draggedIndex, 1)[0];
+                dados[mes].splice(targetIndex, 0, item);
+
+                // 2. Atualiza a interface imediatamente para feedback rápido
+                render();
+
+                // 3. Salva no LocalStorage e no Supabase
+                await salvarDados(); 
+            }
         });
     });
 }
@@ -901,3 +935,97 @@ window.addEventListener('click', function(e) {
         btn.classList.remove("active-gear");
     }
 });
+
+function abrirEdicao(id) {
+    console.log("Tentando abrir ID:", id);
+    const mesAtual = document.getElementById("filtroMes").value;
+    
+    // Procura o item no array do mês atual
+    const item = dados[mesAtual].find(i => i.id == id);
+    
+    if (!item) {
+        console.error("Item não encontrado no array 'dados'");
+        return;
+    }
+
+    // Preenche os campos do modal
+    document.getElementById("editId").value = item.id;
+    document.getElementById("editDesc").value = item.desc;
+    document.getElementById("editValor").value = item.valor;
+    document.getElementById("editCat").value = item.cat;
+    document.getElementById("editOrigem").value = item.origem || "Pagamento";
+    
+    // Força a exibição do modal
+    const modal = document.getElementById("modalEdicao");
+    modal.style.setProperty('display', 'flex', 'important');
+}
+
+///EXTRATO
+
+// Função para abrir o modal de edição preenchido
+function abrirEdicao(id) {
+    const mesAtual = document.getElementById("filtroMes").value;
+    const item = dados[mesAtual].find(i => i.id == id);
+
+    if (item) {
+        document.getElementById("editId").value = item.id;
+        document.getElementById("editDesc").value = item.desc;
+        document.getElementById("editValor").value = item.valor;
+        document.getElementById("editCat").value = item.cat;
+        document.getElementById("editOrigem").value = item.origem || "Carteira";
+        
+        document.getElementById("modalEdicao").style.display = "flex";
+    }
+}
+
+function fecharModalEdicao() {
+    document.getElementById("modalEdicao").style.display = "none";
+}
+
+// Função centralizadora de salvamento (Resolve o erro de "not defined")
+async function salvarDados() {
+    // 1. Atualiza o banco local
+    localStorage.setItem("dados", JSON.stringify(dados));
+    
+    // 2. Chama sua função existente que sincroniza com o Supabase
+    if (typeof salvarNoBanco === "function") {
+        await salvarNoBanco();
+    }
+}
+
+async function salvarEdicao() {
+    const mesAtual = document.getElementById("filtroMes").value;
+    const id = document.getElementById("editId").value;
+    
+    const index = dados[mesAtual].findIndex(i => i.id == id);
+    
+    if (index !== -1) {
+        // Atualiza os dados no objeto local
+        dados[mesAtual][index].desc = document.getElementById("editDesc").value;
+        dados[mesAtual][index].valor = parseFloat(document.getElementById("editValor").value);
+        dados[mesAtual][index].cat = document.getElementById("editCat").value;
+        dados[mesAtual][index].origem = document.getElementById("editOrigem").value;
+        
+        fecharModalEdicao();
+        
+        // Chama a persistência
+        await salvarDados(); 
+        render(); 
+    }
+}
+
+async function removerItemEdicao() {
+    const id = document.getElementById("editId").value;
+    const mesAtual = document.getElementById("filtroMes").value;
+
+    if (confirm("Deseja realmente excluir este lançamento?")) {
+        // Remove o item do array local
+        dados[mesAtual] = dados[mesAtual].filter(i => i.id != id);
+        
+        fecharModalEdicao();
+        
+        // Persiste a remoção
+        await salvarDados();
+        render();
+    }
+}

@@ -162,8 +162,23 @@
             <div id="listaModelosFixos" class="lista-modelos-scroll"></div>
             <div class="form-vertical form-adicionar-modelo">
                 <h4 class="form-adicionar-modelo__titulo">Adicionar novo modelo</h4>
+                <label class="bank-label" for="fixoDesc">Descrição</label>
                 <input id="fixoDesc" type="text" placeholder="Nome (Ex: Aluguel)">
+                <label class="bank-label" for="fixoValor">Valor</label>
                 <input id="fixoValor" type="number" step="0.01" placeholder="Valor Padrão">
+                <label class="bank-label" for="fixoCat">Categoria</label>
+                <select id="fixoCat" class="input-transparente">
+                    <option value="Necessidades">🏠 Necessidades</option>
+                    <option value="Pessoal">🛒 Pessoal</option>
+                    <option value="Guardar">🏦 Guardar (Caixinha)</option>
+                </select>
+                <label class="bank-label" for="fixoOrigem">Origem/Conta</label>
+                <select id="fixoOrigem" class="input-transparente">
+                    <option value="Pagamento">💳 Pagamento (Saldo)</option>
+                    <option value="Adiantamento">💵 Adiantamento (Saldo)</option>
+                    <option value="Crédito-Pag">✨ Crédito (Saldo Pagamento)</option>
+                    <option value="Crédito-Adi">✨ Crédito (Saldo Adiantamento)</option>
+                </select>
                 <button type="button" class="btn-primary" onclick="adicionarNovoModeloFixo()">+ Adicionar aos Modelos</button>
             </div>
         </div>

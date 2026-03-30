@@ -3,33 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <title>TWS BANK | Painel</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    
+
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
+
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/9484/9484132.png">
     <link rel="apple-touch-icon" href="icone.png">
-
-    <style>
-        /* CSS Auxiliar para novos recursos */
-        .blur-efect { filter: blur(6px); user-select: none; transition: 0.3s; }
-        .header-right { display: flex; align-items: center; gap: 15px; }
-        .btn-furtivo { cursor: pointer; font-size: 20px; transition: 0.3s; padding: 5px; }
-        .btn-furtivo:hover { transform: scale(1.1); }
-    </style>
 </head>
-<body class="dark-mode">
-<div id="pull-to-refresh">
-    <div class="refresh-spinner" id="spinnerIcon"></div>
-    <span id="pullText" style="font-size: 12px; color: var(--inter-orange); font-weight: 600;">
-        ⬇️ Puxe para atualizar
-    </span>
-</div>
+<body>
+    <script>
+        (function () {
+            var s = localStorage.getItem("darkMode");
+            var dark = s === null ? true : s === "true";
+            document.body.classList.toggle("dark-mode", dark);
+        })();
+    </script>
+    <div id="pull-to-refresh">
+        <div class="refresh-spinner" id="spinnerIcon"></div>
+        <span id="pullText" class="pull-hint">⬇️ Puxe para atualizar</span>
+    </div>
 
     <header class="bank-header-main">
         <div class="header-container">
@@ -37,8 +34,8 @@
                 <span class="bank-icon">●</span>
                 <h1>Finanças</h1>
             </div>
-            <div class="header-right">
-                <span id="btnFurtivo" class="btn-furtivo" onclick="toggleModoFurtivo()" title="Esconder Valores">👁️</span>
+            <div class="header-tools">
+                <button type="button" id="btnFurtivo" class="btn-furtivo" onclick="toggleModoFurtivo()" title="Esconder Valores" aria-label="Esconder valores">👁️</button>
                 <div class="user-badge">Sessão Segura</div>
             </div>
         </div>
@@ -47,167 +44,166 @@
     <main class="container">
         <div id="resumo"></div>
 
-        <div class="bank-card" style="margin-bottom: 20px;">
+        <div class="bank-card bank-card--meses">
             <h3 class="bank-label">Selecionar Período</h3>
-            <div class="meses-scroll" id="menuMeses">
-                <button class="mes-btn" onclick="mudarMes('Janeiro')">Janeiro</button>
-                <button class="mes-btn" onclick="mudarMes('Fevereiro')">Fevereiro</button>
-                <button class="mes-btn" onclick="mudarMes('Março')">Março</button>
-                <button class="mes-btn" onclick="mudarMes('Abril')">Abril</button>
-                <button class="mes-btn" onclick="mudarMes('Maio')">Maio</button>
-                <button class="mes-btn" onclick="mudarMes('Junho')">Junho</button>
-                <button class="mes-btn" onclick="mudarMes('Julho')">Julho</button>
-                <button class="mes-btn" onclick="mudarMes('Agosto')">Agosto</button>
-                <button class="mes-btn" onclick="mudarMes('Setembro')">Setembro</button>
-                <button class="mes-btn" onclick="mudarMes('Outubro')">Outubro</button>
-                <button class="mes-btn" onclick="mudarMes('Novembro')">Novembro</button>
-                <button class="mes-btn" onclick="mudarMes('Dezembro')">Dezembro</button>
+            <div class="periodo-ano-row">
+                <label class="bank-label" for="filtroAno">Ano</label>
+                <select id="filtroAno" class="filtro-ano" aria-label="Ano fiscal"></select>
             </div>
+            <div class="meses-scroll" id="menuMeses" aria-label="Meses do ano"></div>
             <input type="hidden" id="filtroMes" value="">
         </div>
 
         <div id="lista"></div>
 
         <footer class="bank-footer">
-            <button class="btn-action" onclick="exportarExcel()">📊 Exportar</button>
-            <label for="importarFile" class="btn-action" style="cursor: pointer;">📥 Importar</label>
-            <input type="file" id="importarFile" accept=".xlsx, .xls, .csv" onchange="importarExcel(this)" style="display: none;">
-            <button class="btn-action" onclick="logout()" style="color: #ff4d4d;">🚪 Sair</button>
+            <button type="button" class="btn-action" onclick="exportarExcel()">📊 Exportar</button>
+            <label for="importarFile" class="btn-action btn-action--file">📥 Importar</label>
+            <input type="file" id="importarFile" class="visually-hidden" accept=".xlsx,.xls,.csv" onchange="importarExcel(this)">
+            <button type="button" class="btn-action btn-action--danger" onclick="logout()">🚪 Sair</button>
         </footer>
     </main>
 
-    <div class="floating-group" style="display: flex; flex-direction: column; gap: 15px; align-items: center;">
-        <button class="btn-float" onclick="toggleDarkMode()">🌙</button>
-        <div style="position: relative; display: flex; align-items: center;">
-            <div id="menuFixosOpcoes" style="display: none; position: absolute; right: 60px; flex-direction: row; gap: 10px; white-space: nowrap;">
-                <button class="btn-float-mini" onclick="abrirConfirmacaoFixos()" title="Lançar no Mês">🔄</button>
-                <button class="btn-float-mini" onclick="abrirGerenciadorFixos()" title="Gerenciar Modelos">📝</button>
+    <div class="floating-group floating-group--stack">
+        <button type="button" class="btn-float" onclick="toggleDarkMode()" aria-label="Alternar tema">🌙</button>
+        <div class="fixos-submenu-wrap">
+            <div id="menuFixosOpcoes" class="fixos-opcoes" aria-hidden="true">
+                <button type="button" class="btn-float-mini" onclick="abrirConfirmacaoFixos()" title="Lançar no Mês">🔄</button>
+                <button type="button" class="btn-float-mini" onclick="abrirGerenciadorFixos()" title="Gerenciar Modelos">📝</button>
             </div>
-            <button class="btn-float" onclick="toggleMenuFixos()" id="btnMasterFixos" style="z-index: 10;">⚙️</button>
+            <button type="button" class="btn-float btn-float--gear" onclick="toggleMenuFixos()" id="btnMasterFixos" aria-expanded="false" aria-haspopup="true" title="Opções de fixos">⚙️</button>
         </div>
     </div>
 
-    <div id="modalLancamento" class="modal-overlay" style="display: none;">
-        <div class="modal-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="color: var(--inter-orange); margin: 0;">Novo Lançamento</h3>
-                <button onclick="fecharModal()" style="background:none; border:none; color:#fff; font-size:24px; cursor:pointer;">&times;</button>
+    <div id="modalLancamento" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalLancamentoTitulo" aria-hidden="true">
+        <div class="modal-card modal-card--form">
+            <div class="modal-header-row">
+                <h3 id="modalLancamentoTitulo" class="modal-title">Novo Lançamento</h3>
+                <button type="button" class="btn-close-x" onclick="fecharModal()" aria-label="Fechar">&times;</button>
             </div>
             <div class="form-vertical">
-                <label class="bank-label">Descrição</label>
+                <label class="bank-label" for="desc">Descrição</label>
                 <input id="desc" type="text" placeholder="Ex: Mercado, Aluguel...">
-                <label class="bank-label">Valor (R$)</label>
+                <label class="bank-label" for="valor">Valor (R$)</label>
                 <input id="valor" type="number" step="0.01" placeholder="0,00">
-                <label class="bank-label">Categoria</label>
+                <label class="bank-label" for="cat">Categoria</label>
                 <select id="cat">
                     <option value="Entrada">💰 Entrada</option>
                     <option value="Necessidades">🏠 Necessidades</option>
                     <option value="Pessoal">🛒 Pessoal</option>
                     <option value="Guardar">🏦 Guardar (Caixinha)</option>
                 </select>
-                <label class="bank-label">Origem / Método</label>
+                <label class="bank-label" for="origem">Origem / Método</label>
                 <select id="origem">
                     <option value="Pagamento">💳 Pagamento (Saldo)</option>
                     <option value="Adiantamento">💵 Adiantamento (Saldo)</option>
                     <option value="Crédito-Pag">✨ Crédito (Saldo Pagamento)</option>
                     <option value="Crédito-Adi">✨ Crédito (Saldo Adiantamento)</option>
                 </select>
-                
-                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; cursor: pointer;">
-                    <input type="checkbox" id="checkPrevisto" style="width: 18px; height: 18px; cursor: pointer;">
-                    <label for="checkPrevisto" style="font-size: 14px; color: #fff; cursor: pointer;">Lançar como Gasto Previsto (Pendente)</label>
+
+                <div class="previsto-check-row">
+                    <input type="checkbox" id="checkPrevisto">
+                    <label for="checkPrevisto">Lançar como Gasto Previsto (Pendente)</label>
                 </div>
 
-                <button class="btn-primary" style="width: 100%; margin-top: 15px; padding: 15px;" onclick="adicionarComModal()">Confirmar</button>
+                <button type="button" class="btn-primary btn-primary--block" onclick="adicionarComModal()">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <div id="modalConfirmarFixos" class="modal-overlay" style="display:none; z-index:30000; backdrop-filter: blur(5px);">
-        <div class="modal-card" style="max-width: 320px; text-align: center;">
-            <div style="font-size: 40px; margin-bottom: 10px;">🔄</div>
-            <h3 style="color: #fff; margin-bottom: 10px;">Lançar Fixos?</h3>
-            <p style="color: #888; font-size: 14px; margin-bottom: 20px;">Deseja gerar os gastos fixos para este mês agora?</p>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="document.getElementById('modalConfirmarFixos').style.display='none'" style="flex: 1; padding: 12px; background: #333; border-radius: 8px; color: white; border: none; cursor: pointer;">Cancelar</button>
-                <button onclick="lancarContasFixas()" style="flex: 1; padding: 12px; background: var(--inter-orange); border-radius: 8px; color: white; border: none; cursor: pointer;">Confirmar</button>
+    <div id="modalConfirmarFixos" class="modal-overlay modal-overlay--front" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-card modal-card--narrow">
+            <div class="modal-emoji" aria-hidden="true">🔄</div>
+            <h3 class="modal-heading-center">Lançar Fixos?</h3>
+            <p class="modal-text-muted">Deseja gerar os gastos fixos para este mês agora?</p>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-secondary" onclick="fecharModalConfirmarFixos()">Cancelar</button>
+                <button type="button" class="btn-modal-confirm" onclick="lancarContasFixas()">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <div id="modalConfirmarExclusao" class="modal-overlay" style="display:none; z-index:30000; backdrop-filter: blur(5px);">
-        <div class="modal-card" style="max-width: 320px; text-align: center;">
-            <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
-            <h3 style="color: #fff; margin-bottom: 10px;">Excluir Item?</h3>
-            <p style="color: #888; font-size: 14px; margin-bottom: 20px;">Esta ação removerá o registro permanentemente.</p>
-            <div style="display: flex; gap: 10px;">
-                <button onclick="fecharConfirmacao()" style="flex: 1; padding: 12px; background: #333; border-radius: 8px; color: white; border: none; cursor: pointer;">Cancelar</button>
-                <button id="btnConfirmarDeletar" style="flex: 1; padding: 12px; background: #ff4d4d; border-radius: 8px; color: white; border: none; cursor: pointer;">Excluir</button>
+    <div id="modalConfirmarExclusao" class="modal-overlay modal-overlay--front">
+        <div class="modal-card modal-card--narrow">
+            <div class="modal-emoji" aria-hidden="true">⚠️</div>
+            <h3 class="modal-heading-center">Excluir Item?</h3>
+            <p class="modal-text-muted">Esta ação removerá o registro permanentemente.</p>
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-secondary" onclick="fecharConfirmacao()">Cancelar</button>
+                <button type="button" class="btn-modal-danger" id="btnConfirmarDeletar">Excluir</button>
             </div>
         </div>
     </div>
 
     <div id="toast-sucesso">
-        <img src="https://media.tenor.com/AWKzZ19awFYAAAAi/checkmark-transparent.gif" class="toast-icon" alt="Sucesso">
+        <img src="https://media.tenor.com/AWKzZ19awFYAAAAi/checkmark-transparent.gif" class="toast-icon" alt="">
         <div>
-            <strong style="display: block; color: #2ECC71; font-size: 14px;">Sucesso!</strong>
-            <span style="font-size: 12px; color: #ccc;">Dados atualizados com êxito.</span>
+            <strong class="toast-title">Sucesso!</strong>
+            <span class="toast-msg">Dados atualizados com êxito.</span>
         </div>
     </div>
 
-    <div id="modalConfigFixos" class="modal-overlay" style="display: none;">
-        <div class="modal-card" style="max-width: 450px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="color: var(--inter-orange); margin: 0;">⚙️ Modelos de Gastos Fixos</h3>
-                <button onclick="fecharModalFixos()" class="btn-close-modal">&times;</button>
+    <div id="toast-erro" role="status" aria-live="polite">
+        <span class="toast-icon toast-icon--erro" aria-hidden="true">!</span>
+        <div>
+            <strong class="toast-title toast-title--erro">Atenção</strong>
+            <span class="toast-msg">Algo deu errado.</span>
+        </div>
+    </div>
+
+    <div id="modalConfigFixos" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="modal-card modal-card--wide">
+            <div class="modal-header-row">
+                <h3 class="modal-title">⚙️ Modelos de Gastos Fixos</h3>
+                <button type="button" onclick="fecharModalFixos()" class="btn-close-modal" aria-label="Fechar">&times;</button>
             </div>
-            <div id="listaModelosFixos" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;"></div>
-            <div class="form-vertical" style="border-top: 1px solid #333; padding-top: 15px;">
-                <h4 style="font-size: 12px; color: var(--inter-orange); margin-bottom: 10px;">ADICIONAR NOVO MODELO</h4>
+            <div id="listaModelosFixos" class="lista-modelos-scroll"></div>
+            <div class="form-vertical form-adicionar-modelo">
+                <h4 class="form-adicionar-modelo__titulo">Adicionar novo modelo</h4>
                 <input id="fixoDesc" type="text" placeholder="Nome (Ex: Aluguel)">
                 <input id="fixoValor" type="number" step="0.01" placeholder="Valor Padrão">
-                <button class="btn-primary" onclick="adicionarNovoModeloFixo()">+ Adicionar aos Modelos</button>
+                <button type="button" class="btn-primary" onclick="adicionarNovoModeloFixo()">+ Adicionar aos Modelos</button>
             </div>
         </div>
     </div>
 
     <div id="modalMetas">
         <div class="modal-content-metas">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0;">📊 Metas de Gastos</h3>
-                <button onclick="toggleMetasFlutuante()" class="btn-clear" style="color: #fff; font-size: 24px; cursor: pointer;">✕</button>
+            <div class="modal-header-row">
+                <h3 id="modalMetasTitulo" class="modal-title--metas">📊 Metas de Gastos</h3>
+                <button type="button" onclick="toggleMetasFlutuante()" class="btn-clear btn-close-x" aria-label="Fechar metas">✕</button>
             </div>
             <div id="conteudoMetas"></div>
         </div>
     </div>
 
-    <div id="modalEdicao" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-        <div class="bank-card" style="width:90%; max-width:400px; padding:25px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3 style="color:var(--inter-text); margin:0;">Editar Lançamento</h3>
-                <button onclick="fecharModalEdicao()" style="background:none; border:none; color:var(--inter-gray); font-size:20px; cursor:pointer;">✕</button>
+    <div id="modalEdicao" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true">
+        <div class="bank-card modal-edit-inner">
+            <div class="modal-header-row">
+                <h3 class="modal-title--light">Editar Lançamento</h3>
+                <button type="button" onclick="fecharModalEdicao()" class="btn-close-x" aria-label="Fechar">✕</button>
             </div>
             <input type="hidden" id="editId">
-            <div style="margin-bottom:15px;">
-                <label class="bank-label">Descrição</label>
-                <input type="text" id="editDesc" class="input-transparente" style="width:100%; border-bottom:1px solid var(--inter-border); padding:8px 0; color:var(--inter-text);">
+            <div class="form-edit-group">
+                <label class="bank-label" for="editDesc">Descrição</label>
+                <input type="text" id="editDesc" class="input-transparente">
             </div>
-            <div style="margin-bottom:15px;">
-                <label class="bank-label">Valor (R$)</label>
-                <input type="number" step="0.01" id="editValor" class="input-transparente" style="width:100%; border-bottom:1px solid var(--inter-border); padding:8px 0; color:var(--inter-text); font-weight:bold;">
+            <div class="form-edit-group">
+                <label class="bank-label" for="editValor">Valor (R$)</label>
+                <input type="number" step="0.01" id="editValor" class="input-transparente input-transparente--valor">
             </div>
-            <div style="margin-bottom:15px;">
-                <label class="bank-label">Categoria</label>
-                <select id="editCat" class="input-transparente" style="width:100%; border-bottom:1px solid var(--inter-border); padding:8px 0; color:var(--inter-text);">
+            <div class="form-edit-group">
+                <label class="bank-label" for="editCat">Categoria</label>
+                <select id="editCat" class="input-transparente">
                     <option value="Entrada">Entrada</option>
                     <option value="Necessidades">Necessidades</option>
                     <option value="Pessoal">Pessoal</option>
                     <option value="Guardar">Guardar</option>
                 </select>
             </div>
-            <div style="margin-bottom:20px;">
-                <label class="bank-label">Origem/Conta</label>
-                <select id="editOrigem" class="input-transparente" style="width:100%; border-bottom:1px solid var(--inter-border); padding:8px 0; color:var(--inter-text);">
+            <div class="form-edit-group">
+                <label class="bank-label" for="editOrigem">Origem/Conta</label>
+                <select id="editOrigem" class="input-transparente">
                     <option value="Pagamento">Pagamento</option>
                     <option value="Adiantamento">Adiantamento</option>
                     <option value="Crédito-Pag">Crédito (Pagamento)</option>
@@ -215,9 +211,9 @@
                 </select>
             </div>
 
-            <div style="display:flex; gap:10px;">
-                <button onclick="removerItemEdicao()" style="flex:1; background:#f5f5f5; border:none; padding:12px; border-radius:8px; color:#e74c3c; cursor:pointer; font-weight:bold;">Excluir</button>
-                <button onclick="salvarEdicao()" style="flex:2; background:var(--inter-orange); border:none; padding:12px; border-radius:8px; color:white; cursor:pointer; font-weight:bold;">Salvar Alterações</button>
+            <div class="modal-edicao-actions">
+                <button type="button" onclick="removerItemEdicao()" class="btn-edit-delete">Excluir</button>
+                <button type="button" onclick="salvarEdicao()" class="btn-edit-save">Salvar Alterações</button>
             </div>
         </div>
     </div>

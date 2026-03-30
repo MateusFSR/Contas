@@ -1165,3 +1165,72 @@ function confirmarPagamentoDireto(event, id) {
         if (typeof mostrarToast === "function") mostrarToast();
     }
 }
+
+
+let startY = 0;
+const pullThreshold = 100; // Distância necessária
+const pullIndicator = document.getElementById('pull-to-refresh');
+const pullText = document.getElementById('pullText');
+const spinner = document.getElementById('spinnerIcon');
+
+window.addEventListener('touchstart', (e) => {
+    // Só inicia se estiver no topo absoluto da página
+    if (window.scrollY === 0) {
+        startY = e.touches[0].pageY;
+    }
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    const currentY = e.touches[0].pageY;
+    const pullDistance = currentY - startY;
+
+    if (window.scrollY === 0 && pullDistance > 0) {
+        pullIndicator.style.display = 'flex';
+        pullIndicator.style.height = `${Math.min(pullDistance * 0.5, pullThreshold)}px`;
+        
+        // Efeito de opacidade e escala conforme puxa
+        const opacity = Math.min(pullDistance / pullThreshold, 1);
+        pullIndicator.style.opacity = opacity;
+
+        if (pullDistance > (pullThreshold * 2)) {
+            pullText.innerText = "✨ Solte para atualizar";
+            spinner.style.display = 'block'; // Mostra o spinner mas sem girar ainda
+        } else {
+            pullText.innerText = "⬇️ Puxe para atualizar";
+            spinner.style.display = 'none';
+        }
+    }
+}, { passive: true });
+
+window.addEventListener('touchend', async () => {
+    const height = parseInt(pullIndicator.style.height);
+
+    if (height >= (pullThreshold / 2)) {
+        // Ativa o modo carregando
+        pullText.innerText = "Atualizando...";
+        spinner.classList.add('spinning');
+        
+        // Simula ou executa a atualização dos dados
+        if (typeof salvarNoBanco === "function" || typeof buscarDados === "function") {
+            // Se tiver integração com Supabase, chame aqui
+            // await buscarDados(); 
+        }
+
+        render(); // Sua função principal de atualizar a tela
+
+        // Aguarda um momento para o usuário ver o sucesso
+        setTimeout(() => {
+            pullIndicator.style.height = '0px';
+            pullIndicator.style.opacity = '0';
+            spinner.classList.remove('spinning');
+            
+            // Se você tiver o seu Toast de sucesso, pode chamar aqui
+            if (typeof mostrarToast === "function") mostrarToast();
+        }, 800);
+    } else {
+        // Cancela o movimento se não puxou o suficiente
+        pullIndicator.style.height = '0px';
+        pullIndicator.style.opacity = '0';
+    }
+    startY = 0;
+});

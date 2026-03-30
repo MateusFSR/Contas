@@ -3,42 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <title>Login | TWS BANK</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="style.css"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Alterado para cores claras */
-        body { 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            background: #f4f7f6; /* Fundo cinza bem claro */
-            margin: 0; 
-            font-family: sans-serif;
+        body.login-page {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100dvh;
+            margin: 0;
+            padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+            padding-top: max(16px, env(safe-area-inset-top, 0px));
+            background: #f4f7f6;
+            font-family: 'Inter', system-ui, sans-serif;
         }
-        .login-box { 
-            width: 90%; 
-            max-width: 380px; 
-            background: #ffffff; 
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+        .login-box {
+            width: 100%;
+            max-width: 380px;
+            background: #ffffff;
+            padding: clamp(20px, 5vw, 30px);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
-        .login-box h1 { 
-            color: #333; /* Texto escuro para contraste */
-            text-align: center; 
-            font-weight: 300; 
-            margin-bottom: 30px; 
+        .login-box h1 {
+            color: #333;
+            text-align: center;
+            font-weight: 300;
+            margin-bottom: 30px;
         }
-        #erro { 
-            color: #ff4d4d; 
-            text-align: center; 
-            font-size: 13px; 
-            margin-top: 15px; 
-            height: 20px; 
+        #erro {
+            color: #ff4d4d;
+            text-align: center;
+            font-size: 13px;
+            margin-top: 15px;
+            min-height: 20px;
         }
-        /* Estilização básica dos inputs para combinar com o tema claro */
-        input {
+        .login-box input {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -46,10 +47,11 @@
             box-sizing: border-box;
             background: #fff;
             color: #333;
+            font-family: inherit;
         }
     </style>
 </head>
-<body class="light-mode">
+<body class="light-mode login-page">
     <div class="login-box bank-card">
         <div style="text-align: center; margin-bottom: 10px;">
             <span style="color: #FF7A00; font-size: 40px;">●</span>

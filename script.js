@@ -832,21 +832,22 @@ function importarExcel(input) {
 }
 
 function ativarDragAndDrop() {
-    const tbody = document.querySelector("#lista .container-extrato"); // Seleciona o container do extrato
-    if (!tbody) return;
+    const container = document.querySelector(".container-extrato");
+    if (!container) return;
 
-    const rows = tbody.querySelectorAll(".item-transacao");
-    let draggedIndex = null;
+    const rows = container.querySelectorAll(".item-transacao");
+    let draggedId = null;
 
-    rows.forEach((row, index) => {
-        // Torna o item arrastável
+    rows.forEach((row) => {
         row.setAttribute("draggable", true);
-        row.dataset.index = index; // Garante que o índice atual está no elemento
 
         row.addEventListener("dragstart", (e) => {
-            draggedIndex = index;
+            // Em vez de index, usamos o ID único que já está no seu HTML
+            // Note que no seu render() você passa abrirEdicao('ID'), vamos capturar esse ID
+            const onclickAttr = e.currentTarget.getAttribute("onclick");
+            draggedId = onclickAttr.match(/'([^']+)'/)[1]; 
+            
             e.currentTarget.classList.add("dragging");
-            // Efeito visual de transparência ao arrastar
             e.dataTransfer.effectAllowed = "move";
         });
 
@@ -856,27 +857,42 @@ function ativarDragAndDrop() {
 
         row.addEventListener("dragover", (e) => {
             e.preventDefault();
-            e.dataTransfer.dropEffect = "move";
         });
 
         row.addEventListener("drop", async (e) => {
             e.preventDefault();
             const targetRow = e.target.closest(".item-transacao");
-            if (!targetRow || draggedIndex === null) return;
+            if (!targetRow || !draggedId) return;
 
-            const targetIndex = parseInt(targetRow.dataset.index);
+            const targetOnclick = targetRow.getAttribute("onclick");
+            const targetId = targetOnclick.match(/'([^']+)'/)[1];
+
+            if (draggedId === targetId) return;
+
             const mes = document.getElementById("filtroMes").value;
+            const listaMes = dados[mes];
 
-            if (draggedIndex !== targetIndex) {
-                // 1. Reordena o array localmente
-                const item = dados[mes].splice(draggedIndex, 1)[0];
-                dados[mes].splice(targetIndex, 0, item);
+            // 1. Localiza os índices reais no array original
+            const indexOrigem = listaMes.findIndex(i => i.id == draggedId);
+            const indexDestino = listaMes.findIndex(i => i.id == targetId);
 
-                // 2. Atualiza a interface imediatamente para feedback rápido
+            if (indexOrigem !== -1 && indexDestino !== -1) {
+                // 2. Reordena o array original baseado nos IDs
+                const [itemMovido] = listaMes.splice(indexOrigem, 1);
+                listaMes.splice(indexDestino, 0, itemMovido);
+
+                // 3. Feedback visual e persistência
                 render();
-
-                // 3. Salva no LocalStorage e no Supabase
-                await salvarDados(); 
+                
+                if (typeof salvarNoLocalStorage === "function") {
+                    localStorage.setItem("dados", JSON.stringify(dados));
+                }
+                
+                if (typeof salvarDados === "function") {
+                    await salvarDados();
+                } else if (typeof salvarNoBanco === "function") {
+                    await salvarNoBanco();
+                }
             }
         });
     });

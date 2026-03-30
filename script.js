@@ -5,10 +5,83 @@ const SUPABASE_URL = "https://amqbggvxcyutlzubadio.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtcWJnZ3Z4Y3l1dGx6dWJhZGlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ2Mzc1NDksImV4cCI6MjA5MDIxMzU0OX0.PtlDWAmK7wCmFAs4QZIv3CSnlbqS11v8DCXw6K7NTvg"; 
 const NOME_USUARIO = "mateusfsr";
 
-let dados = JSON.parse(localStorage.getItem("dados")) || {
-    "Janeiro": [], "Fevereiro": [], "Março": [], "Abril": [], "Maio": [], "Junho": [],
-    "Julho": [], "Agosto": [], "Setembro": [], "Outubro": [], "Novembro": [], "Dezembro": []
-};
+const MESES_ANO = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+// Estrutura: dados[ano][mes] = [...]  (ex.: dados["2026"]["Janeiro"])
+function migrarEstruturaLegada(obj) {
+    if (!obj || typeof obj !== "object") {
+        return { [String(new Date().getFullYear())]: Object.fromEntries(MESES_ANO.map((m) => [m, []])) };
+    }
+    const keys = Object.keys(obj);
+    if (keys.length === 0) {
+        return { [String(new Date().getFullYear())]: Object.fromEntries(MESES_ANO.map((m) => [m, []])) };
+    }
+    const k0 = keys[0];
+    if (/^\d{4}$/.test(k0) && obj[k0] && typeof obj[k0] === "object") {
+        const inner = Object.keys(obj[k0]);
+        if (inner.some((ik) => MESES_ANO.includes(ik))) {
+            return obj;
+        }
+    }
+    if (MESES_ANO.some((m) => Object.prototype.hasOwnProperty.call(obj, m))) {
+        return { [String(new Date().getFullYear())]: { ...obj } };
+    }
+    return { [String(new Date().getFullYear())]: Object.fromEntries(MESES_ANO.map((m) => [m, []])) };
+}
+
+function parsePayloadNuvem(raw) {
+    if (!raw || typeof raw !== "object") return { data: null, updatedAt: 0 };
+    if (raw.data !== undefined && raw.updatedAt != null) {
+        return { data: raw.data, updatedAt: Number(raw.updatedAt) || 0 };
+    }
+    return { data: raw, updatedAt: 0 };
+}
+
+function getLocalUpdatedAt() {
+    return parseInt(localStorage.getItem("dadosUpdatedAt") || "0", 10);
+}
+
+function persistDadosLocal(ts) {
+    const t = ts != null ? ts : Date.now();
+    localStorage.setItem("dados", JSON.stringify(dados));
+    localStorage.setItem("dadosUpdatedAt", String(t));
+}
+
+function loadDadosInicialLocal() {
+    const raw = localStorage.getItem("dados");
+    let parsed = null;
+    try {
+        parsed = raw ? JSON.parse(raw) : null;
+    } catch {
+        parsed = null;
+    }
+    const d = migrarEstruturaLegada(parsed);
+    if (raw && localStorage.getItem("dadosUpdatedAt") == null) {
+        localStorage.setItem("dadosUpdatedAt", String(Date.now()));
+    }
+    return d;
+}
+
+function getAnoSelecionado() {
+    const el = document.getElementById("filtroAno");
+    if (el && el.value) return String(el.value);
+    return String(new Date().getFullYear());
+}
+
+function ensureAnoMes(ano, mes) {
+    if (!dados[ano]) dados[ano] = {};
+    if (!dados[ano][mes]) dados[ano][mes] = [];
+    return dados[ano][mes];
+}
+
+function modalShow(id, show) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.style.display = show ? "flex" : "none";
+    el.setAttribute("aria-hidden", show ? "false" : "true");
+}
+
+let dados = loadDadosInicialLocal();
 
 let grafDistribuicao = null;
 let grafCategoria = null;
@@ -72,7 +145,7 @@ function verificarAcesso() {
 }
 
 // ==========================================================================
-// MONITOR DE INATIVIDADE (1 MINUTO)
+// MONITOR DE INATIVIDADE (5 MINUTOS)
 // ==========================================================================
 let idleTimer;
 
@@ -84,7 +157,7 @@ function resetIdleTimer() {
         idleTimer = setTimeout(() => {
             console.log("Inatividade detectada...");
             logout();
-        }, 300000); // 60 segundos
+        }, 300000); // 5 minutos
     }
 }
 
@@ -113,14 +186,31 @@ async function carregarDadosDoBanco() {
 
         const resultado = await response.json();
         if (resultado && resultado.length > 0) {
-            dados = resultado[0].dados_json;
-            localStorage.setItem("dados", JSON.stringify(dados));
-            console.log("✅ Dados recuperados com sucesso.");
+            const { data: rawData, updatedAt: remoteTs } = parsePayloadNuvem(resultado[0].dados_json);
+            const remoteData = migrarEstruturaLegada(rawData);
+            const localTs = getLocalUpdatedAt();
+
+            if (remoteTs > localTs) {
+                dados = remoteData;
+                persistDadosLocal(remoteTs);
+                console.log("✅ Dados da nuvem aplicados (mais recentes).");
+            } else if (localTs > remoteTs) {
+                console.log("📤 Dados locais mais recentes; enviando para a nuvem.");
+                await salvarNoBanco();
+            } else {
+                dados = remoteData;
+                persistDadosLocal(remoteTs || Date.now());
+                console.log("✅ Dados sincronizados.");
+            }
         }
+        render();
+        return true;
     } catch (error) {
         console.error("❌ Falha ao carregar dados:", error);
+        mostrarToastErro("Não foi possível atualizar da nuvem. Usando dados locais.");
+        render();
+        return false;
     }
-    render();
 }
 
 async function salvarNoBanco() {
@@ -142,7 +232,9 @@ async function salvarNoBanco() {
         });
         
         const existe = await checkRes.json();
-        const payload = { usuario: NOME_USUARIO, dados_json: dados };
+        const updatedAt = Date.now();
+        const envelope = { data: dados, updatedAt };
+        const payload = { usuario: NOME_USUARIO, dados_json: envelope };
         let finalRes;
 
         // 3. Lógica de PATCH (Atualizar) ou POST (Criar novo)
@@ -155,7 +247,7 @@ async function salvarNoBanco() {
                     "Content-Type": "application/json",
                     "Prefer": "return=minimal"
                 },
-                body: JSON.stringify({ dados_json: dados })
+                body: JSON.stringify({ dados_json: envelope })
             });
         } else {
             finalRes = await fetch(`${SUPABASE_URL}/rest/v1/financas`, {
@@ -171,20 +263,15 @@ async function salvarNoBanco() {
 
         // 4. Tratamento de Sucesso
         if (finalRes.ok) {
-            // REMOVIDO: alert("✨ Sincronização concluída!");
-            
-            // NOVO: Chama o Toast com o checkmark animado
             mostrarToastSucesso("Sincronizado com a nuvem!");
-            
-            localStorage.setItem("dados", JSON.stringify(dados));
+            persistDadosLocal(updatedAt);
         } else {
             throw new Error("Erro no servidor");
         }
 
     } catch (error) {
         console.error(error);
-        // Opcional: Você pode criar um mostrarToastErro() seguindo a mesma lógica
-        alert("❌ Erro ao salvar na nuvem. Verifique sua conexão.");
+        mostrarToastErro("Erro ao salvar na nuvem. Verifique sua conexão.");
     } finally {
         // 5. Restaura o estado original do botão
         if (btn) {
@@ -202,12 +289,12 @@ let modelosFixos = JSON.parse(localStorage.getItem("tws_modelos_fixos")) || [
 
 // Abre o gerenciador
 function abrirGerenciadorFixos() {
-    document.getElementById("modalConfigFixos").style.display = "flex";
+    modalShow("modalConfigFixos", true);
     renderizarListaModelos();
 }
 
 function fecharModalFixos() {
-    document.getElementById("modalConfigFixos").style.display = "none";
+    modalShow("modalConfigFixos", false);
 }
 
 // Renderiza a lista dentro do modal para você excluir ou ver o que tem
@@ -243,21 +330,32 @@ function removerModeloFixo(index) {
     renderizarListaModelos();
 }
 
+function abrirConfirmacaoFixos() {
+    modalShow("modalConfirmarFixos", true);
+}
+
+function fecharModalConfirmarFixos() {
+    modalShow("modalConfirmarFixos", false);
+}
+
 async function lancarContasFixas() {
     const mes = document.getElementById("filtroMes").value;
-    
+
     if (modelosFixos.length === 0) {
-        alert("Nenhum modelo cadastrado!"); // Aqui pode manter alert ou usar um Toast de erro
+        mostrarToastErro("Nenhum modelo cadastrado.");
         return;
     }
+
+    fecharModalConfirmarFixos();
 
     // REMOVIDO: if (confirm(...))
     // NOVA LÓGICA: Executa direto ou você pode abrir um modal de "Processando"
     
+    const ano = getAnoSelecionado();
     modelosFixos.forEach(c => {
-        dados[mes].push({
+        ensureAnoMes(ano, mes).push({
             id: Date.now() + Math.random(),
-            desc: `[PREVISTO] ${c.desc}`,
+            desc: c.desc,
             valor: c.valor,
             cat: c.cat,
             origem: c.origem,
@@ -274,7 +372,16 @@ async function lancarContasFixas() {
     
     // Se o menu de opções estiver aberto, fecha ele
     const menu = document.getElementById("menuFixosOpcoes");
-    if(menu) menu.classList.remove("aberto");
+    const btnGear = document.getElementById("btnMasterFixos");
+    if (menu) {
+        menu.classList.remove("aberto");
+        menu.setAttribute("aria-hidden", "true");
+    }
+    if (btnGear) {
+        btnGear.setAttribute("aria-expanded", "false");
+        btnGear.style.transform = "";
+        btnGear.style.background = "";
+    }
 }
 
 // 1. Lógica do Modo Furtivo Atualizada
@@ -294,14 +401,14 @@ function aplicarModoFurtivo() {
 
     // Seleciona todos os elementos que devem ser borrados
     // IDs dos saldos + classes de valores na tabela
-    const seletores = "#vTotal, #vPag, #vAdi, .valor-tabela, .input-valor";
+    const seletores = "#vTotal, #vPag, #vAdi, .limite-valor, .valor-tabela, .input-valor";
     const elementos = document.querySelectorAll(seletores);
 
     elementos.forEach(el => {
         if (modoFurtivo) {
-            el.classList.add("blur-efect");
+            el.classList.add("blur-effect");
         } else {
-            el.classList.remove("blur-efect");
+            el.classList.remove("blur-effect");
         }
     });
 }
@@ -318,7 +425,7 @@ function adicionar() {
     const check = document.getElementById("checkPrevisto"); // Captura o elemento
 
     if (!desc.value || !valor.value) {
-        alert("Preencha a descrição e o valor!");
+        mostrarToastErro("Preencha a descrição e o valor.");
         return;
     }
 
@@ -335,48 +442,22 @@ function adicionar() {
         dataCriacao: new Date().toISOString()
     };
 
-    if (!dados[mes]) dados[mes] = [];
-    dados[mes].push(novoItem);
+    const ano = getAnoSelecionado();
+    ensureAnoMes(ano, mes).push(novoItem);
     
     // Limpeza
     desc.value = "";
     valor.value = "";
     if (check) check.checked = false; 
     
-    localStorage.setItem("dados", JSON.stringify(dados));
+    persistDadosLocal(Date.now());
     render();
 }
 
-let indexParaRemover = null; // Variável global temporária
-
-// 1. A função que o botão ✕ da tabela chama
-function remover(index) {
-    indexParaRemover = index; // Guarda qual item o usuário quer apagar
-    const modal = document.getElementById("modalConfirmarExclusao");
-    modal.style.display = "flex";
-    
-    // Configura o clique do botão de confirmação dentro do modal
-    document.getElementById("btnConfirmarDeletar").onclick = executarRemocao;
-}
-
-// 2. A função que realmente apaga o dado
-function executarRemocao() {
-    if (indexParaRemover !== null) {
-        const mesAtual = document.getElementById("filtroMes").value;
-        
-        dados[mesAtual].splice(indexParaRemover, 1);
-        
-        localStorage.setItem("dados", JSON.stringify(dados));
-        fecharConfirmacao();
-        render();
-        
-        mostrarToastSucesso("Lançamento removido!");
-        salvarNoBanco(); // <--- ADICIONADO: Salva no Supabase após remover
-    }
-}
+let indexParaRemover = null;
 
 function fecharConfirmacao() {
-    document.getElementById("modalConfirmarExclusao").style.display = "none";
+    modalShow("modalConfirmarExclusao", false);
     indexParaRemover = null;
 }
 
@@ -384,12 +465,14 @@ let timeoutAutoSave;
 
 function editarCampo(index, campo, novoValor) {
     const mes = document.getElementById("filtroMes").value;
+    const ano = getAnoSelecionado();
+    if (!dados[ano] || !dados[ano][mes]) return;
     if (campo === "valor") {
-        dados[mes][index][campo] = parseFloat(novoValor) || 0;
+        dados[ano][mes][index][campo] = parseFloat(novoValor) || 0;
     } else {
-        dados[mes][index][campo] = novoValor;
+        dados[ano][mes][index][campo] = novoValor;
     }
-    localStorage.setItem("dados", JSON.stringify(dados));
+    persistDadosLocal(Date.now());
     
     // Lógica de Auto-salvamento com delay de 1.5s para não travar o banco
     clearTimeout(timeoutAutoSave);
@@ -402,18 +485,19 @@ function editarCampo(index, campo, novoValor) {
 // RENDERIZAÇÃO E INTERFACE
 // ==========================================================================
 function render() {
-    const mesesAno = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    
-    if (!document.getElementById("filtroMes").value) {
-        document.getElementById("filtroMes").value = mesesAno[new Date().getMonth()];
-    }
-
-    const mesAtualNome = document.getElementById("filtroMes").value;
-    const indexMesAtual = mesesAno.indexOf(mesAtualNome);
+    const filtroEl = document.getElementById("filtroMes");
     const lista = document.getElementById("lista");
     const resumo = document.getElementById("resumo");
+    if (!filtroEl || !lista || !resumo) return;
 
-    if (!dados[mesAtualNome]) dados[mesAtualNome] = [];
+    if (!filtroEl.value) filtroEl.value = MESES_ANO[new Date().getMonth()];
+
+    const mesAtualNome = filtroEl.value;
+    const indexMesAtual = MESES_ANO.indexOf(mesAtualNome);
+    const ano = getAnoSelecionado();
+
+    ensureAnoMes(ano, mesAtualNome);
+    const listaMesAtual = dados[ano][mesAtualNome];
 
     // Ajuste de layout para o header fixo
     const header = document.querySelector(".bank-header-main");
@@ -428,7 +512,7 @@ function render() {
     let limiteUsadoNoMes = 0;
     
     // 1. CÁLCULOS
-    dados[mesAtualNome].forEach(item => {
+    listaMesAtual.forEach(item => {
     const valor = parseFloat(item.valor) || 0;
     const origem = (item.origem || "").toLowerCase();
     const desc = (item.desc || "").toLowerCase();
@@ -473,17 +557,21 @@ function render() {
 
     let totalCaixinhaHistorico = 0;
     for (let i = 0; i <= indexMesAtual; i++) {
-        const nomeM = mesesAno[i];
-        if (dados[nomeM]) {
-            dados[nomeM].forEach(item => { 
+        const nomeM = MESES_ANO[i];
+        const arr = dados[ano] && dados[ano][nomeM];
+        if (arr) {
+            arr.forEach(item => { 
                 if (item.cat === "Guardar" && item.pago !== false) totalCaixinhaHistorico += item.valor; 
             });
         }
     }
 
     const limiteDisponivel = totalCaixinhaHistorico - limiteUsadoNoMes;
-    const porcentagemGastoLimite = totalCaixinhaHistorico > 0 ? (limiteUsadoNoMes / totalCaixinhaHistorico) * 100 : 0;
-    const estiloBrilho = porcentagemGastoLimite >= 90 ? `box-shadow: 0 0 15px #ff4d4d; animation: pulseGlow 1.5s infinite alternate;` : '';
+    const pctUsadoCredito =
+        totalCaixinhaHistorico > 0
+            ? Math.min((limiteUsadoNoMes / totalCaixinhaHistorico) * 100, 100)
+            : 0;
+    const pctDisponivelCredito = totalCaixinhaHistorico > 0 ? Math.max(0, 100 - pctUsadoCredito) : 0;
     
     // CORES CORRIGIDAS: Usando variáveis do CSS sem fixar #fff
     const corDinamica = "var(--inter-text)"; 
@@ -520,14 +608,15 @@ function render() {
 
                 <!-- DIREITA -->
                 <div class="resumo-direita">
-                    <span class="bank-label">LIMITE DISPONÍVEL (CAIXINHA)</span>
+                    <span class="bank-label">LIMITE DISPONÍVEL</span>
                     
                     <strong class="bank-value limite-valor">
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
 
-                    <div class="barra-limite">
-                        <div class="barra-preenchimento" style="width: ${Math.min(porcentagemGastoLimite, 100)}%"></div>
+                    <div class="barra-limite" aria-hidden="true">
+                        <div class="barra-limite-disponivel" style="width: ${pctDisponivelCredito}%"></div>
+                        <div class="barra-limite-usado" style="width: ${pctUsadoCredito}%"></div>
                     </div>
                 </div>
 
@@ -554,44 +643,32 @@ function render() {
     </div>
     `;
 
-    // 3. EXTRATO AGRUPADO
+    // 3. EXTRATO (lista única, ordenada por data mais recente; sem cabeçalhos por dia)
     const agrupadoPorData = {};
-    dados[mesAtualNome].forEach(item => {
+    listaMesAtual.forEach(item => {
         const dataKey = item.dataCriacao ? item.dataCriacao.split('T')[0] : new Date().toISOString().split('T')[0];
         if (!agrupadoPorData[dataKey]) agrupadoPorData[dataKey] = [];
         agrupadoPorData[dataKey].push(item);
     });
 
     const datasOrdenadas = Object.keys(agrupadoPorData).sort((a, b) => new Date(b) - new Date(a));
+    const itensExtratoOrdenados = datasOrdenadas.flatMap((data) => agrupadoPorData[data]);
 
     let htmlExtrato = `
         <div class="bank-card" style="margin-top:20px; padding: 20px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                 <h3 style="font-size: 16px; font-weight: 600; color: ${corDinamica}">Extrato</h3>
-                <span style="color:${corSuave}; font-size:12px">${dados[mesAtualNome].length} lançamentos</span>
+                <span style="color:${corSuave}; font-size:12px">${listaMesAtual.length} lançamentos</span>
             </div>
             <div class="container-extrato">`;
 
-    datasOrdenadas.forEach(data => {
-        const transacoesDoDia = agrupadoPorData[data];
-        const dataObj = new Date(data + "T12:00:00");
-        const hoje = new Date().toISOString().split('T')[0];
-        let dataTexto = data === hoje ? "Hoje" : dataObj.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
+    itensExtratoOrdenados.forEach((item) => {
+        const isEntrada = item.cat === "Entrada";
+        const isPrevisto = item.pago === false;
+        const icones = {"Pessoal": "🛒", "Necessidades": "🏠", "Guardar": "💰", "Entrada": "💵"};
+        const icone = icones[item.cat] || "📝";
 
         htmlExtrato += `
-            <div class="grupo-data">
-                <div class="cabecalho-data" style="border-bottom: 1px solid var(--inter-border); padding-bottom: 8px; margin-bottom: 10px; margin-top: 15px;">
-                    <span style="font-size: 14px; font-weight: bold; color: ${corDinamica}">${dataTexto}</span>
-                </div>
-        `;
-
-        transacoesDoDia.forEach(item => {
-            const isEntrada = item.cat === "Entrada";
-            const isPrevisto = item.pago === false;
-            const icones = {"Pessoal": "🛒", "Necessidades": "🏠", "Guardar": "💰", "Entrada": "💵"};
-            const icone = icones[item.cat] || "📝";
-
-            htmlExtrato += `
                 <div class="item-transacao" onclick="abrirEdicao('${item.id}')" style="display: flex; align-items: center; padding: 12px 0; cursor: pointer; border-bottom: 1px solid var(--inter-border); ${isPrevisto ? 'opacity: 0.5' : ''}">
                     <div class="icone-circulo" style="width: 40px; height: 40px; background: var(--icon-bg); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; font-size: 18px; border: 1px solid var(--inter-border);">
                         ${icone}
@@ -601,7 +678,7 @@ function render() {
                         <div style="font-size: 12px; color: ${corSuave}">${item.origem || 'Carteira'}</div>
                     </div>
                     <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: bold; color: ${isEntrada ? 'var(--green)' : corDinamica}">
+                    <div style="font-size: 14px; font-weight: bold; color: ${isEntrada ? 'var(--green)' : 'var(--red)'}">
                         ${isEntrada ? '' : '-'} R$ ${parseFloat(item.valor).toFixed(2)}
                     </div>
                     ${isPrevisto ? `
@@ -615,14 +692,14 @@ function render() {
                     <div style="margin-left: 15px; color: var(--inter-orange); font-size: 12px;">❯</div>
                 </div>
             `;
-        });
-        htmlExtrato += `</div>`;
     });
 
     htmlExtrato += `</div></div>`;
     lista.innerHTML = htmlExtrato;
 
-    document.querySelectorAll(".mes-btn").forEach(btn => btn.classList.toggle("ativo", btn.innerText.trim() === mesAtualNome));
+    document.querySelectorAll(".mes-btn").forEach((btn) =>
+        btn.classList.toggle("ativo", (btn.dataset.mes || btn.textContent.trim()) === mesAtualNome)
+    );
     animarValoresTela(
     totalEntradas - totalSaidas,
     saldoPagamento,
@@ -633,14 +710,17 @@ function render() {
 }
 
 // FUNÇÃO COMPLEMENTAR PARA O BOTÃO "PAGAR"
-function confirmarPagamento(id) {
+async function confirmarPagamento(id) {
     const mes = document.getElementById("filtroMes").value;
-    const item = dados[mes].find(i => i.id == id || i.id === parseFloat(id));
+    const ano = getAnoSelecionado();
+    if (!dados[ano] || !dados[ano][mes]) return;
+    const item = dados[ano][mes].find(i => i.id == id || i.id === parseFloat(id));
     if (item) {
         item.pago = true;
         item.desc = item.desc.replace("[PREVISTO] ", "");
+        persistDadosLocal(Date.now());
         render();
-        if(typeof salvarNoBanco === "function") salvarNoBanco();
+        await salvarDados();
     }
 }
 
@@ -694,40 +774,92 @@ function gerarBarraUI(nome, atual, limite) {
 }
 
 function animarValoresTela(total, pag, adi) {
-    const formatar = (v) => "R$ " + v.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    document.getElementById("vTotal").innerText = formatar(total);
-    document.getElementById("vPag").innerText = formatar(pag);
-    document.getElementById("vAdi").innerText = formatar(adi);
+    const formatar = (v) => "R$ " + v.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
+    const vTotal = document.getElementById("vTotal");
+    const vPag = document.getElementById("vPag");
+    const vAdi = document.getElementById("vAdi");
+    if (vTotal) vTotal.innerText = formatar(total);
+    if (vPag) vPag.innerText = formatar(pag);
+    if (vAdi) vAdi.innerText = formatar(adi);
 }
 
 function mudarMes(novoMes) {
-    document.getElementById("filtroMes").value = novoMes;
+    const el = document.getElementById("filtroMes");
+    if (el) el.value = novoMes;
     render();
+}
+
+function buildMenuMeses() {
+    const container = document.getElementById("menuMeses");
+    if (!container || container.dataset.built) return;
+    container.innerHTML = MESES_ANO.map(
+        (m) => `<button type="button" class="mes-btn" data-mes="${m}">${m}</button>`
+    ).join("");
+    container.dataset.built = "1";
+    container.addEventListener("click", (e) => {
+        const btn = e.target.closest(".mes-btn");
+        if (btn?.dataset.mes) mudarMes(btn.dataset.mes);
+    });
+}
+
+function applyStoredTheme() {
+    if (document.body.classList.contains("login-page")) return;
+    const saved = localStorage.getItem("darkMode");
+    const useDark = saved === null ? true : saved === "true";
+    document.body.classList.toggle("dark-mode", useDark);
 }
 
 function toggleDarkMode() {
     const isDark = document.body.classList.toggle("dark-mode");
-    localStorage.setItem("darkMode", isDark);
+    localStorage.setItem("darkMode", String(isDark));
 }
 
 // ==========================================================================
 // MODAIS E DASHBOARD
 // ==========================================================================
 
-function abrirModal() { document.getElementById("modalLancamento").style.display = "flex"; }
+function abrirModal() {
+    modalShow("modalLancamento", true);
+    const d = document.getElementById("desc");
+    setTimeout(() => d && d.focus(), 0);
+}
 
-function fecharModal() { document.getElementById("modalLancamento").style.display = "none"; }
+function fecharModal() {
+    modalShow("modalLancamento", false);
+}
 
-function mostrarToastSucesso() {
+function mostrarToastSucesso(mensagem) {
     const toast = document.getElementById("toast-sucesso");
+    if (!toast) return;
+    const msgEl = toast.querySelector(".toast-msg");
+    if (mensagem && msgEl) msgEl.textContent = mensagem;
     toast.style.display = "flex";
     toast.style.animation = "slideInRight 0.5s ease forwards";
 
-    // Esconde automaticamente após 3 segundos
     setTimeout(() => {
         toast.style.animation = "slideOutRight 0.5s ease forwards";
-        setTimeout(() => { toast.style.display = "none"; }, 500);
+        setTimeout(() => {
+            toast.style.display = "none";
+            if (msgEl) msgEl.textContent = "Dados atualizados com êxito.";
+        }, 500);
     }, 3000);
+}
+
+function mostrarToastErro(mensagem) {
+    const toast = document.getElementById("toast-erro");
+    if (!toast) return;
+    const msgEl = toast.querySelector(".toast-msg");
+    if (mensagem && msgEl) msgEl.textContent = mensagem;
+    toast.style.display = "flex";
+    toast.style.animation = "slideInRight 0.5s ease forwards";
+
+    setTimeout(() => {
+        toast.style.animation = "slideOutRight 0.5s ease forwards";
+        setTimeout(() => {
+            toast.style.display = "none";
+            if (msgEl) msgEl.textContent = "Algo deu errado.";
+        }, 500);
+    }, 4000);
 }
 
 function adicionarComModal() {
@@ -739,7 +871,7 @@ function adicionarComModal() {
     const check = document.getElementById("checkPrevisto"); 
 
     if (!desc.value || !valor.value) {
-        alert("Preencha a descrição e o valor!");
+        mostrarToastErro("Preencha a descrição e o valor.");
         return;
     }
 
@@ -756,8 +888,8 @@ function adicionarComModal() {
         dataCriacao: new Date().toISOString()
     };
 
-    if (!dados[mes]) dados[mes] = [];
-    dados[mes].push(novoItem);
+    const ano = getAnoSelecionado();
+    ensureAnoMes(ano, mes).push(novoItem);
     
     // Limpar e fechar
     desc.value = "";
@@ -766,7 +898,7 @@ function adicionarComModal() {
     
     fecharModal(); // Fecha o modal após adicionar
     
-    localStorage.setItem("dados", JSON.stringify(dados));
+    persistDadosLocal(Date.now());
     render();
     if (typeof salvarNoBanco === "function") salvarNoBanco();
 }
@@ -779,7 +911,8 @@ function fecharDashboard() { document.getElementById("dashboardModal").classList
 
 function renderizarGraficosDashboard() {
     const mes = document.getElementById("filtroMes").value;
-    const dMes = dados[mes] || [];
+    const ano = getAnoSelecionado();
+    const dMes = (dados[ano] && dados[ano][mes]) || [];
     let cats = { Necessidades: 0, Pessoal: 0, Guardar: 0 };
     dMes.forEach(i => { if(cats[i.cat] !== undefined) cats[i.cat] += i.valor; });
 
@@ -801,10 +934,23 @@ function renderizarGraficosDashboard() {
 // ==========================================================================
 function exportarExcel() {
     let rows = [];
-    for (let m in dados) {
-        dados[m].forEach(item => {
-            rows.push({ "Mês": m, "Descrição": item.desc, "Valor": item.valor, "Categoria": item.cat, "Origem": item.origem });
-        });
+    const anos = Object.keys(dados).sort();
+    for (const ano of anos) {
+        const porMes = dados[ano];
+        if (!porMes || typeof porMes !== "object") continue;
+        for (const m of MESES_ANO) {
+            if (!porMes[m] || !porMes[m].length) continue;
+            porMes[m].forEach(item => {
+                rows.push({
+                    "Ano": ano,
+                    "Mês": m,
+                    "Descrição": item.desc,
+                    "Valor": item.valor,
+                    "Categoria": item.cat,
+                    "Origem": item.origem
+                });
+            });
+        }
     }
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
@@ -822,11 +968,24 @@ function importarExcel(input) {
         let novosDados = {};
         json.forEach(row => {
             const m = row["Mês"];
-            if (!novosDados[m]) novosDados[m] = [];
-            novosDados[m].push({ desc: row["Descrição"], valor: parseFloat(row["Valor"]), cat: row["Categoria"], origem: row["Origem"] });
+            if (!m) return;
+            const ano = row["Ano"] != null && row["Ano"] !== "" ? String(row["Ano"]) : getAnoSelecionado();
+            if (!novosDados[ano]) novosDados[ano] = {};
+            if (!novosDados[ano][m]) novosDados[ano][m] = [];
+            novosDados[ano][m].push({
+                id: Date.now() + Math.random(),
+                desc: row["Descrição"],
+                valor: parseFloat(row["Valor"]),
+                cat: row["Categoria"],
+                origem: row["Origem"],
+                pago: true,
+                dataCriacao: new Date().toISOString()
+            });
         });
-        dados = novosDados;
+        dados = migrarEstruturaLegada(novosDados);
+        persistDadosLocal(Date.now());
         render();
+        if (typeof salvarNoBanco === "function") salvarNoBanco();
     };
     reader.readAsArrayBuffer(file);
 }
@@ -870,7 +1029,9 @@ function ativarDragAndDrop() {
             if (draggedId === targetId) return;
 
             const mes = document.getElementById("filtroMes").value;
-            const listaMes = dados[mes];
+            const ano = getAnoSelecionado();
+            const listaMes = dados[ano] && dados[ano][mes];
+            if (!listaMes) return;
 
             // 1. Localiza os índices reais no array original
             const indexOrigem = listaMes.findIndex(i => i.id == draggedId);
@@ -884,9 +1045,7 @@ function ativarDragAndDrop() {
                 // 3. Feedback visual e persistência
                 render();
                 
-                if (typeof salvarNoLocalStorage === "function") {
-                    localStorage.setItem("dados", JSON.stringify(dados));
-                }
+                persistDadosLocal(Date.now());
                 
                 if (typeof salvarDados === "function") {
                     await salvarDados();
@@ -907,10 +1066,12 @@ function toggleMetasFlutuante() {
     }
 
     if (modal.style.display === "none" || modal.style.display === "") {
-        renderizarMetasDetalhadas(); // Chama a função que calcula as barras
+        renderizarMetasDetalhadas();
         modal.style.display = "flex";
+        modal.setAttribute("aria-hidden", "false");
     } else {
         modal.style.display = "none";
+        modal.setAttribute("aria-hidden", "true");
     }
 }
 
@@ -919,6 +1080,7 @@ function renderizarMetasDetalhadas() {
     if (!container) return;
 
     const mes = document.getElementById("filtroMes").value;
+    const ano = getAnoSelecionado();
     
     let pagIn = 0, adiIn = 0;
     let gastos = {
@@ -926,9 +1088,9 @@ function renderizarMetasDetalhadas() {
         Adiantamento: { Necessidades: 0, Pessoal: 0, Guardar: 0 }
     };
 
-    if (!dados[mes]) return;
+    if (!dados[ano] || !dados[ano][mes]) return;
 
-    dados[mes].forEach(item => {
+    dados[ano][mes].forEach(item => {
         const valor = parseFloat(item.valor) || 0;
         const categoria = item.cat ? item.cat.toLowerCase() : ""; 
         const origem = item.origem ? item.origem.toLowerCase() : ""; 
@@ -984,14 +1146,16 @@ function initSortable() {
         animation: 150,
         onEnd: function (evt) {
             const mesAtualNome = document.getElementById("filtroMes").value;
-            const listaMes = dados[mesAtualNome];
+            const ano = getAnoSelecionado();
+            const listaMes = dados[ano] && dados[ano][mesAtualNome];
+            if (!listaMes) return;
             
             // Remove o item da posição antiga e coloca na nova
             const itemMovido = listaMes.splice(evt.oldIndex, 1)[0];
             listaMes.splice(evt.newIndex, 0, itemMovido);
             
             // Salva a nova ordem e atualiza a tela
-            localStorage.setItem("dados", JSON.stringify(dados));
+            persistDadosLocal(Date.now());
             render(); 
 
             // NOVO: Sincroniza a nova ordem com o Supabase automaticamente
@@ -1005,45 +1169,72 @@ function initSortable() {
 // ==========================================================================
 // INICIALIZAÇÃO
 // ==========================================================================
+function buildMenuAnos() {
+    const sel = document.getElementById("filtroAno");
+    if (!sel || sel.dataset.built) return;
+    const y = new Date().getFullYear();
+    for (let a = y - 5; a <= y + 3; a++) {
+        const opt = document.createElement("option");
+        opt.value = String(a);
+        opt.textContent = String(a);
+        sel.appendChild(opt);
+    }
+    sel.value = String(y);
+    sel.dataset.built = "1";
+    sel.addEventListener("change", () => render());
+}
+
 window.addEventListener("load", () => {
     verificarAcesso();
-    if (localStorage.getItem("darkMode") === "true") document.body.classList.add("dark-mode");
-    
-    // Define o mês atual na inicialização
-    const mesesAno = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    document.getElementById("filtroMes").value = mesesAno[new Date().getMonth()];
-    
-    carregarDadosDoBanco();
+
+    const filtroMes = document.getElementById("filtroMes");
+    if (filtroMes) {
+        buildMenuAnos();
+        filtroMes.value = MESES_ANO[new Date().getMonth()];
+        buildMenuMeses();
+        carregarDadosDoBanco();
+    }
 });
 
 function toggleMenuFixos() {
     const menu = document.getElementById("menuFixosOpcoes");
     const btn = document.getElementById("btnMasterFixos");
-    
+    if (!menu || !btn) return;
+
     if (!menu.classList.contains("aberto")) {
         menu.classList.add("aberto");
+        btn.setAttribute("aria-expanded", "true");
+        menu.setAttribute("aria-hidden", "false");
         btn.style.transform = "rotate(90deg)";
         btn.style.background = "var(--inter-orange)";
     } else {
         menu.classList.remove("aberto");
+        btn.setAttribute("aria-expanded", "false");
+        menu.setAttribute("aria-hidden", "true");
         btn.style.transform = "rotate(0deg)";
         btn.style.background = "";
     }
 }
 
 // Fechar o menu se clicar fora dele
-window.addEventListener('click', function(e) {
+window.addEventListener("click", function (e) {
     const menu = document.getElementById("menuFixosOpcoes");
     const btn = document.getElementById("btnMasterFixos");
+    if (!menu || !btn) return;
     if (!btn.contains(e.target) && !menu.contains(e.target)) {
-        menu.style.display = "none";
-        btn.classList.remove("active-gear");
+        menu.classList.remove("aberto");
+        btn.setAttribute("aria-expanded", "false");
+        menu.setAttribute("aria-hidden", "true");
+        btn.style.transform = "";
+        btn.style.background = "";
     }
 });
 
 function abrirEdicao(id) {
     const mesAtual = document.getElementById("filtroMes").value;
-    const item = dados[mesAtual].find(i => i.id == id);
+    const ano = getAnoSelecionado();
+    if (!dados[ano] || !dados[ano][mesAtual]) return;
+    const item = dados[ano][mesAtual].find(i => i.id == id);
 
     if (item) {
         document.getElementById("editId").value = item.id;
@@ -1052,46 +1243,24 @@ function abrirEdicao(id) {
         document.getElementById("editCat").value = item.cat;
         document.getElementById("editOrigem").value = item.origem || "Carteira";
         
-        // MOSTRAR OU ESCONDER BOTÃO DE PAGAR
         const btnPagar = document.getElementById("btnPagarAgora");
-        if (item.pago === false) {
-            btnPagar.style.display = "block";
-        } else {
-            btnPagar.style.display = "none";
-        }
+        if (btnPagar) btnPagar.style.display = item.pago === false ? "block" : "none";
 
-        document.getElementById("modalEdicao").style.display = "flex";
+        modalShow("modalEdicao", true);
+        const ev = document.getElementById("editDesc");
+        setTimeout(() => ev && ev.focus(), 0);
     }
 }
 
 ///EXTRATO
 
-// Função para abrir o modal de edição preenchido
-function abrirEdicao(id) {
-    const mesAtual = document.getElementById("filtroMes").value;
-    const item = dados[mesAtual].find(i => i.id == id);
-
-    if (item) {
-        document.getElementById("editId").value = item.id;
-        document.getElementById("editDesc").value = item.desc;
-        document.getElementById("editValor").value = item.valor;
-        document.getElementById("editCat").value = item.cat;
-        document.getElementById("editOrigem").value = item.origem || "Carteira";
-        
-        document.getElementById("modalEdicao").style.display = "flex";
-    }
-}
-
 function fecharModalEdicao() {
-    document.getElementById("modalEdicao").style.display = "none";
+    modalShow("modalEdicao", false);
 }
 
 // Função centralizadora de salvamento (Resolve o erro de "not defined")
 async function salvarDados() {
-    // 1. Atualiza o banco local
-    localStorage.setItem("dados", JSON.stringify(dados));
-    
-    // 2. Chama sua função existente que sincroniza com o Supabase
+    persistDadosLocal(Date.now());
     if (typeof salvarNoBanco === "function") {
         await salvarNoBanco();
     }
@@ -1099,16 +1268,18 @@ async function salvarDados() {
 
 async function salvarEdicao() {
     const mesAtual = document.getElementById("filtroMes").value;
+    const ano = getAnoSelecionado();
     const id = document.getElementById("editId").value;
     
-    const index = dados[mesAtual].findIndex(i => i.id == id);
+    if (!dados[ano] || !dados[ano][mesAtual]) return;
+    const index = dados[ano][mesAtual].findIndex(i => i.id == id);
     
     if (index !== -1) {
         // Atualiza os dados no objeto local
-        dados[mesAtual][index].desc = document.getElementById("editDesc").value;
-        dados[mesAtual][index].valor = parseFloat(document.getElementById("editValor").value);
-        dados[mesAtual][index].cat = document.getElementById("editCat").value;
-        dados[mesAtual][index].origem = document.getElementById("editOrigem").value;
+        dados[ano][mesAtual][index].desc = document.getElementById("editDesc").value;
+        dados[ano][mesAtual][index].valor = parseFloat(document.getElementById("editValor").value);
+        dados[ano][mesAtual][index].cat = document.getElementById("editCat").value;
+        dados[ano][mesAtual][index].origem = document.getElementById("editOrigem").value;
         
         fecharModalEdicao();
         
@@ -1130,18 +1301,19 @@ function removerItemEdicao() {
     // Abre o modal de confirmação do próprio site
     const modalConfirm = document.getElementById("modalConfirmarExclusao");
     if(modalConfirm) {
-        modalConfirm.style.display = "flex";
-        // Configuramos o botão de "Sim" para chamar a execução final
+        modalShow("modalConfirmarExclusao", true);
         document.getElementById("btnConfirmarDeletar").onclick = executarRemocao;
     }
 }
 
 async function executarRemocao() {
     const mesAtual = document.getElementById("filtroMes").value;
+    const ano = getAnoSelecionado();
     const idParaRemover = indexParaRemover;
 
+    if (!dados[ano] || !dados[ano][mesAtual]) return;
     // Filtra o array removendo o item com aquele ID
-    dados[mesAtual] = dados[mesAtual].filter(item => item.id != idParaRemover);
+    dados[ano][mesAtual] = dados[ano][mesAtual].filter(item => item.id != idParaRemover);
     
     // Fecha o modal de confirmação
     fecharConfirmacao();
@@ -1153,84 +1325,120 @@ async function executarRemocao() {
     mostrarToastSucesso("Lançamento removido!");
 }
 
-function confirmarPagamentoDireto(event, id) {
-    event.stopPropagation(); // Não abre o modal de edição
+async function confirmarPagamentoDireto(event, id) {
+    event.stopPropagation();
     const mes = document.getElementById("filtroMes").value;
-    
-    const item = dados[mes].find(i => i.id == id);
+    const ano = getAnoSelecionado();
+    if (!dados[ano] || !dados[ano][mes]) return;
+    const item = dados[ano][mes].find(i => i.id == id);
     if (item) {
         item.pago = true;
-        localStorage.setItem("dados", JSON.stringify(dados));
+        persistDadosLocal(Date.now());
         render();
-        if (typeof mostrarToast === "function") mostrarToast();
+        await salvarDados();
+        mostrarToastSucesso("Pagamento confirmado.");
     }
 }
 
 
 let startY = 0;
-const pullThreshold = 100; // Distância necessária
-const pullIndicator = document.getElementById('pull-to-refresh');
-const pullText = document.getElementById('pullText');
-const spinner = document.getElementById('spinnerIcon');
+const pullThreshold = 100;
+const pullIndicator = document.getElementById("pull-to-refresh");
+const pullText = document.getElementById("pullText");
+const spinner = document.getElementById("spinnerIcon");
 
-window.addEventListener('touchstart', (e) => {
-    // Só inicia se estiver no topo absoluto da página
-    if (window.scrollY === 0) {
-        startY = e.touches[0].pageY;
-    }
-}, { passive: true });
+if (pullIndicator && pullText && spinner) {
+    window.addEventListener("touchstart", (e) => {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].pageY;
+        }
+    }, { passive: true });
 
-window.addEventListener('touchmove', (e) => {
-    const currentY = e.touches[0].pageY;
-    const pullDistance = currentY - startY;
+    window.addEventListener("touchmove", (e) => {
+        const currentY = e.touches[0].pageY;
+        const pullDistance = currentY - startY;
 
-    if (window.scrollY === 0 && pullDistance > 0) {
-        pullIndicator.style.display = 'flex';
-        pullIndicator.style.height = `${Math.min(pullDistance * 0.5, pullThreshold)}px`;
-        
-        // Efeito de opacidade e escala conforme puxa
-        const opacity = Math.min(pullDistance / pullThreshold, 1);
-        pullIndicator.style.opacity = opacity;
+        if (window.scrollY === 0 && pullDistance > 0) {
+            pullIndicator.style.display = "flex";
+            pullIndicator.style.height = `${Math.min(pullDistance * 0.5, pullThreshold)}px`;
+            const opacity = Math.min(pullDistance / pullThreshold, 1);
+            pullIndicator.style.opacity = opacity;
 
-        if (pullDistance > (pullThreshold * 2)) {
-            pullText.innerText = "✨ Solte para atualizar";
-            spinner.style.display = 'block'; // Mostra o spinner mas sem girar ainda
+            if (pullDistance > pullThreshold * 2) {
+                pullText.innerText = "✨ Solte para atualizar";
+                spinner.style.display = "block";
+            } else {
+                pullText.innerText = "⬇️ Puxe para atualizar";
+                spinner.style.display = "none";
+            }
+        }
+    }, { passive: true });
+
+    window.addEventListener("touchend", async () => {
+        const height = parseInt(pullIndicator.style.height, 10) || 0;
+
+        if (height >= pullThreshold / 2) {
+            pullText.innerText = "Atualizando...";
+            spinner.classList.add("spinning");
+
+            let ok = true;
+            if (typeof carregarDadosDoBanco === "function") {
+                ok = await carregarDadosDoBanco();
+            } else {
+                render();
+            }
+
+            setTimeout(() => {
+                pullIndicator.style.height = "0px";
+                pullIndicator.style.opacity = "0";
+                spinner.classList.remove("spinning");
+                if (ok) mostrarToastSucesso("Lista atualizada.");
+            }, 400);
         } else {
-            pullText.innerText = "⬇️ Puxe para atualizar";
-            spinner.style.display = 'none';
+            pullIndicator.style.height = "0px";
+            pullIndicator.style.opacity = "0";
         }
+        startY = 0;
+    });
+}
+
+function isOverlayOpen(id) {
+    const el = document.getElementById(id);
+    return el && el.style.display === "flex";
+}
+
+document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (isOverlayOpen("modalLancamento")) {
+        fecharModal();
+        e.preventDefault();
+        return;
     }
-}, { passive: true });
-
-window.addEventListener('touchend', async () => {
-    const height = parseInt(pullIndicator.style.height);
-
-    if (height >= (pullThreshold / 2)) {
-        // Ativa o modo carregando
-        pullText.innerText = "Atualizando...";
-        spinner.classList.add('spinning');
-        
-        // Simula ou executa a atualização dos dados
-        if (typeof salvarNoBanco === "function" || typeof buscarDados === "function") {
-            // Se tiver integração com Supabase, chame aqui
-            // await buscarDados(); 
-        }
-
-        render(); // Sua função principal de atualizar a tela
-
-        // Aguarda um momento para o usuário ver o sucesso
-        setTimeout(() => {
-            pullIndicator.style.height = '0px';
-            pullIndicator.style.opacity = '0';
-            spinner.classList.remove('spinning');
-            
-            // Se você tiver o seu Toast de sucesso, pode chamar aqui
-            if (typeof mostrarToast === "function") mostrarToast();
-        }, 800);
-    } else {
-        // Cancela o movimento se não puxou o suficiente
-        pullIndicator.style.height = '0px';
-        pullIndicator.style.opacity = '0';
+    if (isOverlayOpen("modalConfirmarFixos")) {
+        fecharModalConfirmarFixos();
+        e.preventDefault();
+        return;
     }
-    startY = 0;
+    if (isOverlayOpen("modalConfirmarExclusao")) {
+        fecharConfirmacao();
+        e.preventDefault();
+        return;
+    }
+    if (isOverlayOpen("modalConfigFixos")) {
+        fecharModalFixos();
+        e.preventDefault();
+        return;
+    }
+    if (isOverlayOpen("modalEdicao")) {
+        fecharModalEdicao();
+        e.preventDefault();
+        return;
+    }
+    const metas = document.getElementById("modalMetas");
+    if (metas && metas.style.display === "flex") {
+        toggleMetasFlutuante();
+        e.preventDefault();
+    }
 });
+
+applyStoredTheme();

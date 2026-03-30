@@ -37,29 +37,24 @@ function parsePayloadNuvem(raw) {
     return { data: raw, updatedAt: 0 };
 }
 
-function getLocalUpdatedAt() {
-    return parseInt(localStorage.getItem("dadosUpdatedAt") || "0", 10);
+function limparPersistenciaLocalDados() {
+    // "Dados" do usuário não devem competir com a nuvem.
+    try {
+        localStorage.removeItem("dados");
+        localStorage.removeItem("dadosUpdatedAt");
+    } catch {
+        // Ignora: alguns navegadores podem bloquear storage.
+    }
 }
 
-function persistDadosLocal(ts) {
-    const t = ts != null ? ts : Date.now();
-    localStorage.setItem("dados", JSON.stringify(dados));
-    localStorage.setItem("dadosUpdatedAt", String(t));
+function persistDadosLocal() {
+    // Nao persiste dados no navegador; a fonte de verdade e a nuvem.
 }
 
 function loadDadosInicialLocal() {
-    const raw = localStorage.getItem("dados");
-    let parsed = null;
-    try {
-        parsed = raw ? JSON.parse(raw) : null;
-    } catch {
-        parsed = null;
-    }
-    const d = migrarEstruturaLegada(parsed);
-    if (raw && localStorage.getItem("dadosUpdatedAt") == null) {
-        localStorage.setItem("dadosUpdatedAt", String(Date.now()));
-    }
-    return d;
+    limparPersistenciaLocalDados();
+    // Inicia vazio; o carregamento real vem do Supabase.
+    return migrarEstruturaLegada(null);
 }
 
 function getAnoSelecionado() {
@@ -186,28 +181,16 @@ async function carregarDadosDoBanco() {
 
         const resultado = await response.json();
         if (resultado && resultado.length > 0) {
-            const { data: rawData, updatedAt: remoteTs } = parsePayloadNuvem(resultado[0].dados_json);
+            const { data: rawData } = parsePayloadNuvem(resultado[0].dados_json);
             const remoteData = migrarEstruturaLegada(rawData);
-            const localTs = getLocalUpdatedAt();
-
-            if (remoteTs > localTs) {
-                dados = remoteData;
-                persistDadosLocal(remoteTs);
-                console.log("✅ Dados da nuvem aplicados (mais recentes).");
-            } else if (localTs > remoteTs) {
-                console.log("📤 Dados locais mais recentes; enviando para a nuvem.");
-                await salvarNoBanco();
-            } else {
-                dados = remoteData;
-                persistDadosLocal(remoteTs || Date.now());
-                console.log("✅ Dados sincronizados.");
-            }
+            dados = remoteData;
+            console.log("✅ Dados da nuvem aplicados.");
         }
         render();
         return true;
     } catch (error) {
         console.error("❌ Falha ao carregar dados:", error);
-        mostrarToastErro("Não foi possível atualizar da nuvem. Usando dados locais.");
+        mostrarToastErro("Não foi possível atualizar da nuvem. Mostrando dados em memória.");
         render();
         return false;
     }
@@ -264,7 +247,6 @@ async function salvarNoBanco() {
         // 4. Tratamento de Sucesso
         if (finalRes.ok) {
             mostrarToastSucesso("Sincronizado com a nuvem!");
-            persistDadosLocal(updatedAt);
         } else {
             throw new Error("Erro no servidor");
         }
@@ -305,6 +287,9 @@ function renderizarListaModelos() {
             <div>
                 <span style="display:block; font-size: 13px;">${m.desc}</span>
                 <span style="font-size: 11px; color: var(--inter-orange);">R$ ${m.valor.toFixed(2)}</span>
+                <span style="font-size: 10px; color: #9a9a9a; display:block; margin-top: 3px;">
+                    ${m.cat || "Necessidades"} • ${m.origem || "Pagamento"}
+                </span>
             </div>
             <button onclick="removerModeloFixo(${index})" class="btn-clear" style="color: #ff4d4d;">✕</button>
         </div>
@@ -314,9 +299,11 @@ function renderizarListaModelos() {
 function adicionarNovoModeloFixo() {
     const desc = document.getElementById("fixoDesc").value;
     const valor = parseFloat(document.getElementById("fixoValor").value);
+    const cat = document.getElementById("fixoCat")?.value || "Necessidades";
+    const origem = document.getElementById("fixoOrigem")?.value || "Pagamento";
 
     if (desc && valor) {
-        modelosFixos.push({ desc, valor, cat: "Necessidades", origem: "Pagamento" });
+        modelosFixos.push({ desc, valor, cat, origem });
         localStorage.setItem("tws_modelos_fixos", JSON.stringify(modelosFixos));
         document.getElementById("fixoDesc").value = "";
         document.getElementById("fixoValor").value = "";
@@ -357,8 +344,8 @@ async function lancarContasFixas() {
             id: Date.now() + Math.random(),
             desc: c.desc,
             valor: c.valor,
-            cat: c.cat,
-            origem: c.origem,
+            cat: c.cat || "Necessidades",
+            origem: c.origem || "Pagamento",
             pago: false,
             dataCriacao: new Date().toISOString()
         });

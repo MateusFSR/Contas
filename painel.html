@@ -36,6 +36,22 @@
             </div>
             <div class="header-tools">
                 <button type="button" id="btnFurtivo" class="btn-furtivo" onclick="toggleModoFurtivo()" title="Esconder Valores" aria-label="Esconder valores">👁️</button>
+                <button type="button" class="btn-furtivo btn-header-icon" onclick="toggleDarkMode()" aria-label="Alternar tema" title="Dark Mode">🌙</button>
+                <div class="fixos-submenu-wrap">
+                    <div id="menuFixosOpcoes" class="fixos-opcoes" aria-hidden="true">
+                        <button type="button" class="btn-float-mini" onclick="abrirConfirmacaoFixos()" title="Lançar no Mês">🔄</button>
+                        <button type="button" class="btn-float-mini" onclick="abrirGerenciadorFixos()" title="Gerenciar Modelos">📝</button>
+                    </div>
+                    <button type="button" class="btn-furtivo btn-header-icon" onclick="toggleMenuFixos()" id="btnMasterFixos" aria-expanded="false" aria-haspopup="true" title="Opções de fixos" aria-label="Opções de fixos">⚙️</button>
+                </div>
+                <div class="fixos-submenu-wrap">
+                    <div id="menuExportOpcoes" class="fixos-opcoes fixos-opcoes--texto" aria-hidden="true">
+                        <button type="button" class="btn-header-option" onclick="exportarExcel()">Exportar para XLSX</button>
+                        <button type="button" class="btn-header-option" onclick="document.getElementById('importarFileTopo').click()">Importar XLSX</button>
+                    </div>
+                    <button type="button" class="btn-furtivo btn-header-icon" onclick="toggleMenuExportar()" id="btnMasterExport" aria-expanded="false" aria-haspopup="true" title="Exportar" aria-label="Exportar">📤</button>
+                    <input type="file" id="importarFileTopo" class="visually-hidden" accept=".xlsx,.xls,.csv" onchange="importarExcel(this)">
+                </div>
                 <div class="user-badge">Sessão Segura</div>
             </div>
         </div>
@@ -57,23 +73,9 @@
         <div id="lista"></div>
 
         <footer class="bank-footer">
-            <button type="button" class="btn-action" onclick="exportarExcel()">📊 Exportar</button>
-            <label for="importarFile" class="btn-action btn-action--file">📥 Importar</label>
-            <input type="file" id="importarFile" class="visually-hidden" accept=".xlsx,.xls,.csv" onchange="importarExcel(this)">
             <button type="button" class="btn-action btn-action--danger" onclick="logout()">🚪 Sair</button>
         </footer>
     </main>
-
-    <div class="floating-group floating-group--stack">
-        <button type="button" class="btn-float" onclick="toggleDarkMode()" aria-label="Alternar tema">🌙</button>
-        <div class="fixos-submenu-wrap">
-            <div id="menuFixosOpcoes" class="fixos-opcoes" aria-hidden="true">
-                <button type="button" class="btn-float-mini" onclick="abrirConfirmacaoFixos()" title="Lançar no Mês">🔄</button>
-                <button type="button" class="btn-float-mini" onclick="abrirGerenciadorFixos()" title="Gerenciar Modelos">📝</button>
-            </div>
-            <button type="button" class="btn-float btn-float--gear" onclick="toggleMenuFixos()" id="btnMasterFixos" aria-expanded="false" aria-haspopup="true" title="Opções de fixos">⚙️</button>
-        </div>
-    </div>
 
     <div id="modalLancamento" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modalLancamentoTitulo" aria-hidden="true">
         <div class="modal-card modal-card--form">

@@ -1544,6 +1544,15 @@ input[type="checkbox"]#checkPrevisto:checked::after {
     transform: scale(1.1);
 }
 
+.btn-header-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 .pull-hint {
     font-size: 12px;
     color: var(--inter-orange);
@@ -1600,15 +1609,69 @@ input[type="checkbox"]#checkPrevisto:checked::after {
 }
 
 #menuFixosOpcoes.fixos-opcoes {
+    display: none;
     position: absolute;
-    right: calc(100% + 12px);
-    top: 50%;
-    transform: translateY(-50%);
+    top: calc(100% + 10px);
+    right: 0;
+    left: auto;
+    transform: none;
+    margin: 0;
+    padding: 6px;
     white-space: nowrap;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 8px;
+    z-index: 1200;
+    border-radius: 12px;
+    background: var(--inter-card);
+    border: 1px solid var(--inter-border);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
 }
 
 #menuFixosOpcoes.fixos-opcoes.aberto {
+    display: flex !important;
     animation: fadeInRight 0.3s ease-out forwards;
+}
+
+.fixos-opcoes--texto {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    transform: none;
+    flex-direction: column;
+    gap: 8px;
+    padding: 6px;
+    min-width: 190px;
+    z-index: 1200;
+    border-radius: 12px;
+    background: var(--inter-card);
+    border: 1px solid var(--inter-border);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.fixos-opcoes--texto.aberto {
+    display: flex !important;
+    animation: fadeInRight 0.3s ease-out forwards;
+}
+
+.btn-header-option {
+    border: 1px solid var(--inter-border);
+    background: var(--inter-card);
+    color: var(--inter-text);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.btn-header-option:hover {
+    border-color: var(--inter-orange);
+    color: var(--inter-orange);
 }
 
 .btn-float--gear {
@@ -1893,12 +1956,32 @@ input[type="checkbox"]#checkPrevisto:checked::after {
     }
 
     #menuFixosOpcoes.fixos-opcoes {
-        right: calc(100% + 8px);
+        right: 0;
+        top: calc(100% + 8px);
         gap: 8px;
     }
 
     .btn-float-mini {
         width: 38px;
         height: 38px;
+    }
+}
+
+@media (max-width: 768px) {
+    .resumo-topo,
+    .resumo-esquerda,
+    .resumo-direita {
+        align-items: flex-start !important;
+        text-align: left !important;
+    }
+
+    .acoes-saldo {
+        justify-content: flex-start !important;
+        align-items: flex-start !important;
+    }
+
+    .btn-acao {
+        justify-content: flex-start !important;
+        text-align: left !important;
     }
 }

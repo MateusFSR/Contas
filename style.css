@@ -39,6 +39,9 @@ body {
     color: var(--inter-text);
     padding: 20px;
     padding-top: 90px; /* Espaço para o header fixo */
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
     transition: var(--transition);
 }
 
@@ -558,6 +561,41 @@ RESPONSIVIDADE
     animation: slideInRight 0.5s ease forwards;
 }
 
+#toast-erro {
+    position: fixed;
+    top: 72px;
+    right: 20px;
+    background: #1a1a1a;
+    border: 1px solid #ff4d4d;
+    border-left: 5px solid #ff4d4d;
+    color: white;
+    padding: 15px 25px;
+    border-radius: 10px;
+    display: none;
+    align-items: center;
+    gap: 15px;
+    z-index: 30001;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    animation: slideInRight 0.5s ease forwards;
+}
+
+.toast-icon--erro {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 77, 77, 0.2);
+    color: #ff4d4d;
+    font-weight: 800;
+    font-size: 14px;
+}
+
+.toast-title--erro {
+    color: #ff8888 !important;
+}
+
 @keyframes slideInRight {
     from { transform: translateX(120%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
@@ -578,8 +616,8 @@ RESPONSIVIDADE
 
 /* Ajustes gerais para telas menores (Celulares) */
 @media (max-width: 768px) {
-    body {
-        padding: 10px; /* Menos margem nas bordas */
+    body:not(.login-page) {
+        padding: 10px;
     }
 
     /* O card principal (Saldo/Limite) empilha os itens */
@@ -637,12 +675,6 @@ RESPONSIVIDADE
     }
 }
 
-/* Garante que o brilho pulsante funcione */
-@keyframes pulseGlow {
-    from { box-shadow: 0 0 5px #ff4d4d; }
-    to { box-shadow: 0 0 15px #ff4d4d, 0 0 20px rgba(255, 77, 77, 0.4); }
-}
-
 /* --- CABEÇALHO PREMIUM MINIMALISTA --- */
 .bank-header-main {
     position: fixed;
@@ -676,10 +708,10 @@ RESPONSIVIDADE
 }
 
 .bank-header-main h1 {
-    font-size: 22px; 
-    font-weight: 300; /* Fonte fina = mais elegante */
+    font-size: 22px;
+    font-weight: 300;
     margin: 0;
-    color: #fff;
+    color: var(--inter-text);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     letter-spacing: -0.5px;
 }
@@ -999,6 +1031,11 @@ select.input-transparente:focus {
     flex-wrap: wrap;
 }
 
+/* Sem o padding de formulário (.bank-label), label e valor ficam na mesma coluna */
+.resumo-topo .bank-label {
+    padding-left: 0 !important;
+}
+
 .resumo-esquerda,
 .resumo-direita {
     flex: 1;
@@ -1012,20 +1049,29 @@ select.input-transparente:focus {
     color: var(--inter-orange);
 }
 
-/* barra */
+/* barra limite de crédito: verde = disponível, vermelho = usado */
 .barra-limite {
+    display: flex;
     width: 100%;
     height: 6px;
-    background: var(--inter-border);
-    border-radius: 3px;
     margin-top: 10px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: var(--inter-border);
 }
 
-.barra-preenchimento {
+.barra-limite-disponivel {
     height: 100%;
-    background: #2ECC71;
-    border-radius: 3px;
+    background: var(--green);
     transition: width 0.5s ease;
+    flex-shrink: 0;
+}
+
+.barra-limite-usado {
+    height: 100%;
+    background: var(--red);
+    transition: width 0.5s ease;
+    flex-shrink: 0;
 }
 
 /* card de baixo */
@@ -1241,19 +1287,7 @@ select.input-transparente:focus {
     margin: 4px     ;
 }
 
-/* barra menor (igual imagem 2) */
-.barra-limite {
-    width: 180px; /* 🔥 tamanho fixo menor */
-    height: 4px;
-    background: var(--inter-border);
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.barra-preenchimento {
-    height: 100%;
-    background: #2ECC71;
-}
+/* largura da barra segue a coluna do resumo (.resumo-direita) */
 
 .resumo-item {
     display: flex;
@@ -1478,4 +1512,393 @@ input[type="checkbox"]#checkPrevisto:checked::after {
 .spinning {
     display: block !important;
     animation: spin 0.8s linear infinite;
+}
+
+/* ==========================================================================
+   PAINEL — utilitários, acessibilidade, responsivo
+   ========================================================================== */
+.blur-effect {
+    filter: blur(6px);
+    user-select: none;
+    transition: 0.3s;
+}
+
+.header-tools {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.btn-furtivo {
+    cursor: pointer;
+    font-size: 20px;
+    transition: 0.3s;
+    padding: 5px;
+    background: none;
+    border: none;
+    color: inherit;
+    line-height: 1;
+}
+
+.btn-furtivo:hover {
+    transform: scale(1.1);
+}
+
+.pull-hint {
+    font-size: 12px;
+    color: var(--inter-orange);
+    font-weight: 600;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+.bank-card--meses {
+    margin-bottom: 20px;
+}
+
+.periodo-ano-row {
+    margin-bottom: 12px;
+}
+
+.periodo-ano-row .bank-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.filtro-ano {
+    width: 100%;
+    max-width: 240px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1px solid var(--inter-border);
+    background: var(--inter-card);
+    color: var(--inter-text);
+    font-family: inherit;
+    font-size: 14px;
+}
+
+.floating-group--stack {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 15px;
+}
+
+.fixos-submenu-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+#menuFixosOpcoes.fixos-opcoes {
+    position: absolute;
+    right: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+}
+
+#menuFixosOpcoes.fixos-opcoes.aberto {
+    animation: fadeInRight 0.3s ease-out forwards;
+}
+
+.btn-float--gear {
+    z-index: 10;
+}
+
+.modal-overlay--front {
+    z-index: 30000;
+}
+
+.modal-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.modal-title {
+    color: var(--inter-orange);
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.modal-title--light {
+    color: var(--inter-text);
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.modal-title--metas {
+    margin: 0;
+    color: var(--inter-text);
+    font-size: 1.1rem;
+}
+
+.btn-close-x {
+    background: none;
+    border: none;
+    color: var(--inter-text);
+    font-size: 24px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 4px;
+}
+
+.previsto-check-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    cursor: pointer;
+}
+
+.previsto-check-row input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.btn-primary--block {
+    width: 100%;
+    margin-top: 15px;
+    padding: 15px;
+}
+
+.modal-card--narrow {
+    max-width: 320px;
+    text-align: center;
+}
+
+.modal-heading-center {
+    color: var(--inter-text);
+    margin: 0 0 10px;
+    font-size: 1.05rem;
+}
+
+.modal-text-muted {
+    color: var(--inter-gray);
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.4;
+}
+
+.modal-emoji {
+    font-size: 40px;
+    margin-bottom: 10px;
+    line-height: 1;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.btn-modal-secondary {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px;
+    background: #333;
+    border-radius: 8px;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-modal-confirm {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px;
+    background: var(--inter-orange);
+    border-radius: 8px;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-modal-danger {
+    flex: 1;
+    min-width: 120px;
+    padding: 12px;
+    background: #ff4d4d;
+    border-radius: 8px;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.modal-card--wide {
+    max-width: 450px;
+}
+
+.lista-modelos-scroll {
+    max-height: min(300px, 50vh);
+    overflow-y: auto;
+    margin-bottom: 20px;
+}
+
+.form-adicionar-modelo {
+    border-top: 1px solid var(--inter-border);
+    padding-top: 15px;
+}
+
+.form-adicionar-modelo__titulo {
+    font-size: 12px;
+    color: var(--inter-orange);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.modal-edit-inner {
+    width: min(400px, 92vw);
+    max-height: min(90vh, 640px);
+    overflow-y: auto;
+    padding: 25px !important;
+}
+
+.form-edit-group {
+    margin-bottom: 15px;
+}
+
+.input-transparente--valor {
+    font-weight: 700;
+}
+
+.modal-edicao-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
+.btn-edit-delete {
+    flex: 1;
+    min-width: 100px;
+    background: var(--inter-bg);
+    border: 1px solid var(--inter-border);
+    padding: 12px;
+    border-radius: 8px;
+    color: #e74c3c;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.btn-edit-save {
+    flex: 2;
+    min-width: 140px;
+    background: var(--inter-orange);
+    border: none;
+    padding: 12px;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.toast-title {
+    display: block;
+    color: #2ECC71;
+    font-size: 14px;
+}
+
+.toast-msg {
+    font-size: 12px;
+    color: #ccc;
+}
+
+.bank-footer .btn-action--danger {
+    color: #ff4d4d;
+}
+
+.bank-footer .btn-action--file {
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .header-container {
+        padding-left: max(16px, env(safe-area-inset-left, 0px));
+        padding-right: max(16px, env(safe-area-inset-right, 0px));
+    }
+
+    #toast-sucesso {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        top: max(12px, env(safe-area-inset-top, 0px));
+    }
+
+    #toast-erro {
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        top: max(72px, env(safe-area-inset-top, 0px));
+    }
+
+    .floating-group {
+        bottom: max(16px, env(safe-area-inset-bottom, 0px));
+        right: max(16px, env(safe-area-inset-right, 0px));
+    }
+
+    .btn-float {
+        width: 52px;
+        height: 52px;
+    }
+
+    .modal-card,
+    .modal-content-metas,
+    .modal-edit-inner {
+        width: min(100%, 92vw);
+        max-height: 85vh;
+        overflow-y: auto;
+    }
+
+    .bank-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .bank-footer .btn-action {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    body:not(.login-page) {
+        padding: 12px;
+        padding-top: 80px;
+    }
+
+    #menuFixosOpcoes.fixos-opcoes {
+        right: calc(100% + 8px);
+        gap: 8px;
+    }
+
+    .btn-float-mini {
+        width: 38px;
+        height: 38px;
+    }
 }

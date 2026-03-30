@@ -1440,3 +1440,42 @@ input[type="checkbox"]#checkPrevisto:checked::after {
     color: var(--inter-text);
     cursor: pointer;
 }
+
+/* Container do Pull-to-Refresh */
+#pull-to-refresh {
+    display: none;
+    overflow: hidden;
+    background: var(--inter-bg); /* Cor do fundo do seu app */
+    border-bottom: 1px solid var(--inter-border);
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: height 0.1s ease-out;
+}
+
+/* O Spinner (Círculo Giratório) */
+.refresh-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(255, 152, 0, 0.2);
+    border-top: 3px solid var(--inter-orange);
+    border-radius: 50%;
+    margin-bottom: 5px;
+    display: none; /* Só aparece quando atingir o limite */
+}
+
+/* Animação de Giro */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.spinning {
+    display: block !important;
+    animation: spin 0.8s linear infinite;
+}

@@ -1216,17 +1216,46 @@ function toggleMenuFixos() {
     }
 }
 
-// Fechar o menu se clicar fora dele
-window.addEventListener("click", function (e) {
-    const menu = document.getElementById("menuFixosOpcoes");
-    const btn = document.getElementById("btnMasterFixos");
+function toggleMenuExportar() {
+    const menu = document.getElementById("menuExportOpcoes");
+    const btn = document.getElementById("btnMasterExport");
     if (!menu || !btn) return;
-    if (!btn.contains(e.target) && !menu.contains(e.target)) {
+
+    if (!menu.classList.contains("aberto")) {
+        menu.classList.add("aberto");
+        btn.setAttribute("aria-expanded", "true");
+        menu.setAttribute("aria-hidden", "false");
+        btn.style.transform = "rotate(90deg)";
+        btn.style.background = "var(--inter-orange)";
+    } else {
         menu.classList.remove("aberto");
         btn.setAttribute("aria-expanded", "false");
         menu.setAttribute("aria-hidden", "true");
-        btn.style.transform = "";
+        btn.style.transform = "rotate(0deg)";
         btn.style.background = "";
+    }
+}
+
+// Fechar o menu se clicar fora dele
+window.addEventListener("click", function (e) {
+    const menuFixos = document.getElementById("menuFixosOpcoes");
+    const btnFixos = document.getElementById("btnMasterFixos");
+    if (menuFixos && btnFixos && !btnFixos.contains(e.target) && !menuFixos.contains(e.target)) {
+        menuFixos.classList.remove("aberto");
+        btnFixos.setAttribute("aria-expanded", "false");
+        menuFixos.setAttribute("aria-hidden", "true");
+        btnFixos.style.transform = "";
+        btnFixos.style.background = "";
+    }
+
+    const menuExport = document.getElementById("menuExportOpcoes");
+    const btnExport = document.getElementById("btnMasterExport");
+    if (menuExport && btnExport && !btnExport.contains(e.target) && !menuExport.contains(e.target)) {
+        menuExport.classList.remove("aberto");
+        btnExport.setAttribute("aria-expanded", "false");
+        menuExport.setAttribute("aria-hidden", "true");
+        btnExport.style.transform = "";
+        btnExport.style.background = "";
     }
 });
 

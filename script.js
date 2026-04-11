@@ -30,11 +30,32 @@ function migrarEstruturaLegada(obj) {
 }
 
 function parsePayloadNuvem(raw) {
-    if (!raw || typeof raw !== "object") return { data: null, updatedAt: 0 };
+    if (!raw || typeof raw !== "object") return { data: null, updatedAt: 0, modelosFixos: undefined };
     if (raw.data !== undefined && raw.updatedAt != null) {
-        return { data: raw.data, updatedAt: Number(raw.updatedAt) || 0 };
+        return {
+            data: raw.data,
+            updatedAt: Number(raw.updatedAt) || 0,
+            modelosFixos: Array.isArray(raw.modelosFixos) ? raw.modelosFixos : undefined,
+        };
     }
-    return { data: raw, updatedAt: 0 };
+    return { data: raw, updatedAt: 0, modelosFixos: undefined };
+}
+
+const DEFAULT_MODELOS_FIXOS = [
+    { desc: "Internet", valor: 100.0, cat: "Necessidades", origem: "Pagamento" },
+    { desc: "Copel", valor: 180.0, cat: "Necessidades", origem: "Pagamento" },
+];
+
+function normalizarModelosFixos(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr
+        .map((m) => ({
+            desc: m && m.desc != null ? String(m.desc).trim() : "",
+            valor: m ? parseFloat(m.valor) : 0,
+            cat: (m && m.cat) || "Necessidades",
+            origem: (m && m.origem) || "Pagamento",
+        }))
+        .filter((m) => m.desc.length > 0 && !Number.isNaN(m.valor));
 }
 
 function limparPersistenciaLocalDados() {
@@ -82,91 +103,74 @@ let grafDistribuicao = null;
 let grafCategoria = null;
 let grafEvolucao = null;
 
-// ==========================================================================
-// FUNÇÕES DE AUTENTICAÇÃO E NAVEGAÇÃO
-// ==========================================================================
-// ==========================================================================
-// SEGURANÇA E ACESSO
-// ==========================================================================
+let sortableExtrato = null;
+let sortableModelosFixos = null;
+let syncStatusHideTimer = null;
+let ultimoRemovido = null;
+let desfazerToastTimer = null;
 
-function login() {
-    // Pegamos os valores e já tratamos o usuário para minúsculo
-    const userRaw = document.getElementById("usuario")?.value || "";
-    const user = userRaw.toLowerCase().trim(); // MateusFSR vira mateusfsr
-    
-    const pass = document.getElementById("senha")?.value;
-    const erroMsg = document.getElementById("erro");
+function setSyncStatus(mode) {
+    const el = document.getElementById("sync-status");
+    if (!el) return;
+    clearTimeout(syncStatusHideTimer);
+    el.className = "sync-status sync-status--" + mode;
+    const labels = {
+        idle: "",
+        loading: "Sincronizando…",
+        saved: "Salvo na nuvem",
+        error: "Falha ao sincronizar",
+    };
+    el.textContent = labels[mode] ?? "";
+    if (mode === "saved") {
+        syncStatusHideTimer = setTimeout(() => {
+            el.textContent = "";
+            el.className = "sync-status sync-status--idle";
+        }, 2800);
+    }
+}
 
-    // Validação com a nova senha numeral
-    if (user === "mateusfsr" && pass === "628387") {
-        localStorage.setItem("logado", "true");
-        
-        // Feedback visual de sucesso antes de redirecionar
-        if (erroMsg) {
-            erroMsg.style.color = "#2ecc71";
-            erroMsg.innerText = "Acesso autorizado! Entrando...";
+function calcularResumoMes(anoStr, mesNome) {
+    if (!dados[anoStr] || !dados[anoStr][mesNome]) {
+        return { totalEntradas: 0, totalSaidas: 0, liquido: 0 };
+    }
+    let totalEntradas = 0;
+    let totalSaidas = 0;
+    dados[anoStr][mesNome].forEach((item) => {
+        const valor = parseFloat(item.valor) || 0;
+        if (item.cat === "Entrada") {
+            totalEntradas += valor;
+        } else if (item.pago !== false) {
+            totalSaidas += valor;
         }
-        
-        setTimeout(() => {
-            window.location.href = "painel.html";
-        }, 800);
-        
-    } else {
-        if (erroMsg) {
-            erroMsg.style.color = "#ff4d4d";
-            erroMsg.innerText = "Usuário ou senha incorretos!";
-            
-            // Limpa o campo de senha para nova tentativa
-            document.getElementById("senha").value = "";
-            
-            setTimeout(() => { erroMsg.innerText = ""; }, 3000);
-        }
+    });
+    return {
+        totalEntradas,
+        totalSaidas,
+        liquido: totalEntradas - totalSaidas,
+    };
+}
+
+function mesAnteriorRef(anoStr, mesNome) {
+    const idx = MESES_ANO.indexOf(mesNome);
+    if (idx <= 0) {
+        return { ano: String(Number(anoStr) - 1), mes: MESES_ANO[11] };
     }
+    return { ano: anoStr, mes: MESES_ANO[idx - 1] };
 }
 
-function logout() {
-    localStorage.removeItem("logado");
-    window.location.href = "index.html"; // Volta para a tela de login
+function formatarDataExtrato(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
 }
-
-function verificarAcesso() {
-    const estaLogado = localStorage.getItem("logado") === "true";
-    const naPaginaDeLogin = window.location.pathname.endsWith("index.html") || window.location.pathname === "/";
-
-    // Se NÃO está logado e NÃO está no login, expulsa
-    if (!estaLogado && !naPaginaDeLogin) {
-        window.location.href = "index.html";
-    }
-}
-
-// ==========================================================================
-// MONITOR DE INATIVIDADE (5 MINUTOS)
-// ==========================================================================
-let idleTimer;
-
-function resetIdleTimer() {
-    clearTimeout(idleTimer);
-    
-    // Só ativa o timer se o usuário estiver logado e fora da tela de login
-    if (localStorage.getItem("logado") === "true" && !window.location.pathname.endsWith("index.html")) {
-        idleTimer = setTimeout(() => {
-            console.log("Inatividade detectada...");
-            logout();
-        }, 300000); // 5 minutos
-    }
-}
-
-// Escutando eventos de interação
-window.onmousemove = resetIdleTimer;
-window.onmousedown = resetIdleTimer;
-window.onkeypress = resetIdleTimer;
-window.ontouchstart = resetIdleTimer;
 
 // ==========================================================================
 // COMUNICAÇÃO COM SUPABASE (PERSISTÊNCIA REMOTA)
 // ==========================================================================
 async function carregarDadosDoBanco() {
     console.log("🔄 Sincronizando com Supabase...");
+    setSyncStatus("loading");
     try {
         const response = await fetch(`${SUPABASE_URL}/rest/v1/financas?usuario=eq.${NOME_USUARIO}&select=dados_json`, {
             method: 'GET',
@@ -181,15 +185,28 @@ async function carregarDadosDoBanco() {
 
         const resultado = await response.json();
         if (resultado && resultado.length > 0) {
-            const { data: rawData } = parsePayloadNuvem(resultado[0].dados_json);
+            const { data: rawData, modelosFixos: modelosNuvem } = parsePayloadNuvem(resultado[0].dados_json);
             const remoteData = migrarEstruturaLegada(rawData);
             dados = remoteData;
+            if (Array.isArray(modelosNuvem)) {
+                modelosFixos = normalizarModelosFixos(modelosNuvem);
+                try {
+                    localStorage.setItem("tws_modelos_fixos", JSON.stringify(modelosFixos));
+                } catch {
+                    // ignora
+                }
+                if (document.getElementById("listaModelosFixos")) {
+                    renderizarListaModelos();
+                }
+            }
             console.log("✅ Dados da nuvem aplicados.");
         }
         render();
+        setSyncStatus("saved");
         return true;
     } catch (error) {
         console.error("❌ Falha ao carregar dados:", error);
+        setSyncStatus("error");
         mostrarToastErro("Não foi possível atualizar da nuvem. Mostrando dados em memória.");
         render();
         return false;
@@ -198,12 +215,13 @@ async function carregarDadosDoBanco() {
 
 async function salvarNoBanco() {
     const btn = document.getElementById("btnSalvar");
-    
-    // 1. Estado de Carregamento no Botão
+
     if (btn) {
         btn.innerHTML = "<span>⏳</span><br><small>Salvando</small>";
         btn.disabled = true;
     }
+
+    setSyncStatus("loading");
 
     try {
         // 2. Verifica se o usuário já tem dados no banco
@@ -216,7 +234,7 @@ async function salvarNoBanco() {
         
         const existe = await checkRes.json();
         const updatedAt = Date.now();
-        const envelope = { data: dados, updatedAt };
+        const envelope = { data: dados, updatedAt, modelosFixos };
         const payload = { usuario: NOME_USUARIO, dados_json: envelope };
         let finalRes;
 
@@ -244,18 +262,16 @@ async function salvarNoBanco() {
             });
         }
 
-        // 4. Tratamento de Sucesso
         if (finalRes.ok) {
-            mostrarToastSucesso("Sincronizado com a nuvem!");
+            setSyncStatus("saved");
         } else {
             throw new Error("Erro no servidor");
         }
-
     } catch (error) {
         console.error(error);
+        setSyncStatus("error");
         mostrarToastErro("Erro ao salvar na nuvem. Verifique sua conexão.");
     } finally {
-        // 5. Restaura o estado original do botão
         if (btn) {
             btn.innerHTML = "<span>☁️</span><br><small>Salvar</small>";
             btn.disabled = false;
@@ -263,11 +279,18 @@ async function salvarNoBanco() {
     }
 }
 
-// Inicializa os modelos de fixos (se não houver no storage, usa um padrão vazio)
-let modelosFixos = JSON.parse(localStorage.getItem("tws_modelos_fixos")) || [
-    { desc: "Internet", valor: 100.00, cat: "Necessidades", origem: "Pagamento" },
-    { desc: "Copel", valor: 180.00, cat: "Necessidades", origem: "Pagamento" }
-];
+// Modelos de fixos: espelho local + fonte na nuvem (dados_json.modelosFixos)
+let modelosFixos;
+try {
+    const rawM = localStorage.getItem("tws_modelos_fixos");
+    modelosFixos = rawM ? JSON.parse(rawM) : null;
+} catch {
+    modelosFixos = null;
+}
+if (!Array.isArray(modelosFixos)) {
+    modelosFixos = DEFAULT_MODELOS_FIXOS.map((m) => ({ ...m }));
+}
+modelosFixos = normalizarModelosFixos(modelosFixos);
 
 // Abre o gerenciador
 function abrirGerenciadorFixos() {
@@ -276,24 +299,93 @@ function abrirGerenciadorFixos() {
 }
 
 function fecharModalFixos() {
+    if (sortableModelosFixos) {
+        sortableModelosFixos.destroy();
+        sortableModelosFixos = null;
+    }
     modalShow("modalConfigFixos", false);
 }
 
-// Renderiza a lista dentro do modal para você excluir ou ver o que tem
+function escapeHtmlModelo(str) {
+    if (str == null) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+function persistModelosFixosOrdem() {
+    try {
+        localStorage.setItem("tws_modelos_fixos", JSON.stringify(modelosFixos));
+    } catch {
+        // ignora
+    }
+    if (typeof salvarNoBanco === "function") {
+        salvarNoBanco();
+    }
+}
+
+function initSortableModelosFixos() {
+    const el = document.getElementById("listaModelosFixos");
+    if (!el || typeof Sortable === "undefined" || modelosFixos.length < 2) return;
+
+    if (sortableModelosFixos) {
+        sortableModelosFixos.destroy();
+        sortableModelosFixos = null;
+    }
+
+    sortableModelosFixos = Sortable.create(el, {
+        animation: 150,
+        handle: ".modelo-fixo-handle",
+        draggable: ".modelo-fixo-item",
+        filter: "button",
+        preventOnFilter: true,
+        ghostClass: "sortable-ghost",
+        chosenClass: "sortable-chosen",
+        onEnd(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+            const [movido] = modelosFixos.splice(evt.oldIndex, 1);
+            modelosFixos.splice(evt.newIndex, 0, movido);
+            persistModelosFixosOrdem();
+            queueMicrotask(() => renderizarListaModelos());
+        },
+    });
+}
+
+// Renderiza a lista dentro do modal (mesmo layout em todas as telas; ordem arrastável)
 function renderizarListaModelos() {
     const container = document.getElementById("listaModelosFixos");
-    container.innerHTML = modelosFixos.map((m, index) => `
-        <div style="display: flex; justify-content: space-between; align-items: center; background: #252525; padding: 10px; border-radius: 8px; margin-bottom: 5px;">
-            <div>
-                <span style="display:block; font-size: 13px;">${m.desc}</span>
-                <span style="font-size: 11px; color: var(--inter-orange);">R$ ${m.valor.toFixed(2)}</span>
-                <span style="font-size: 10px; color: #9a9a9a; display:block; margin-top: 3px;">
-                    ${m.cat || "Necessidades"} • ${m.origem || "Pagamento"}
-                </span>
+    if (!container) return;
+
+    if (sortableModelosFixos) {
+        sortableModelosFixos.destroy();
+        sortableModelosFixos = null;
+    }
+
+    if (modelosFixos.length === 0) {
+        container.innerHTML =
+            '<p class="lista-modelos-fixos__empty" role="status">Nenhum modelo cadastrado. Adicione abaixo.</p>';
+        return;
+    }
+
+    container.innerHTML = modelosFixos
+        .map(
+            (m, index) => `
+        <div class="modelo-fixo-item" data-index="${index}">
+            <div class="modelo-fixo-handle" aria-label="Arrastar para reordenar" title="Arrastar">⋮⋮</div>
+            <div class="modelo-fixo-body">
+                <span class="modelo-fixo-desc">${escapeHtmlModelo(m.desc)}</span>
+                <span class="modelo-fixo-valor">R$ ${Number(m.valor).toFixed(2)}</span>
+                <span class="modelo-fixo-meta">${escapeHtmlModelo(m.cat || "Necessidades")} · ${escapeHtmlModelo(m.origem || "Pagamento")}</span>
             </div>
-            <button onclick="removerModeloFixo(${index})" class="btn-clear" style="color: #ff4d4d;">✕</button>
+            <button type="button" onclick="removerModeloFixo(${index})" class="modelo-fixo-remove btn-clear" aria-label="Remover modelo">✕</button>
         </div>
-    `).join('');
+    `
+        )
+        .join("");
+
+    queueMicrotask(() => initSortableModelosFixos());
 }
 
 function adicionarNovoModeloFixo() {
@@ -304,7 +396,7 @@ function adicionarNovoModeloFixo() {
 
     if (desc && valor) {
         modelosFixos.push({ desc, valor, cat, origem });
-        localStorage.setItem("tws_modelos_fixos", JSON.stringify(modelosFixos));
+        persistModelosFixosOrdem();
         document.getElementById("fixoDesc").value = "";
         document.getElementById("fixoValor").value = "";
         renderizarListaModelos();
@@ -313,7 +405,7 @@ function adicionarNovoModeloFixo() {
 
 function removerModeloFixo(index) {
     modelosFixos.splice(index, 1);
-    localStorage.setItem("tws_modelos_fixos", JSON.stringify(modelosFixos));
+    persistModelosFixosOrdem();
     renderizarListaModelos();
 }
 
@@ -339,17 +431,21 @@ async function lancarContasFixas() {
     // NOVA LÓGICA: Executa direto ou você pode abrir um modal de "Processando"
     
     const ano = getAnoSelecionado();
-    modelosFixos.forEach(c => {
-        ensureAnoMes(ano, mes).push({
-            id: Date.now() + Math.random(),
-            desc: c.desc,
-            valor: c.valor,
-            cat: c.cat || "Necessidades",
-            origem: c.origem || "Pagamento",
-            pago: false,
-            dataCriacao: new Date().toISOString()
+    const listaMes = ensureAnoMes(ano, mes);
+    modelosFixos
+        .slice()
+        .reverse()
+        .forEach((c) => {
+            listaMes.unshift({
+                id: Date.now() + Math.random(),
+                desc: c.desc,
+                valor: c.valor,
+                cat: c.cat || "Necessidades",
+                origem: c.origem || "Pagamento",
+                pago: false,
+                dataCriacao: new Date().toISOString(),
+            });
         });
-    });
 
     render();
     await salvarDados();
@@ -384,11 +480,11 @@ function toggleModoFurtivo() {
 
 function aplicarModoFurtivo() {
     const btnOlho = document.getElementById("btnFurtivo");
-    if (btnOlho) btnOlho.innerText = modoFurtivo ? "👁️‍🗨️" : "👁️";
+    if (btnOlho) btnOlho.classList.toggle("is-blurring", modoFurtivo);
 
     // Seleciona todos os elementos que devem ser borrados
     // IDs dos saldos + classes de valores na tabela
-    const seletores = "#vTotal, #vPag, #vAdi, .limite-valor, .valor-tabela, .input-valor";
+    const seletores = "#vTotal, #vPag, #vAdi, .limite-valor, .valor-tabela, .input-valor, .comparacao-valor";
     const elementos = document.querySelectorAll(seletores);
 
     elementos.forEach(el => {
@@ -430,13 +526,13 @@ function adicionar() {
     };
 
     const ano = getAnoSelecionado();
-    ensureAnoMes(ano, mes).push(novoItem);
-    
+    ensureAnoMes(ano, mes).unshift(novoItem);
+
     // Limpeza
     desc.value = "";
     valor.value = "";
-    if (check) check.checked = false; 
-    
+    if (check) check.checked = false;
+
     persistDadosLocal(Date.now());
     render();
 }
@@ -559,6 +655,16 @@ function render() {
             ? Math.min((limiteUsadoNoMes / totalCaixinhaHistorico) * 100, 100)
             : 0;
     const pctDisponivelCredito = totalCaixinhaHistorico > 0 ? Math.max(0, 100 - pctUsadoCredito) : 0;
+
+    const refAnt = mesAnteriorRef(ano, mesAtualNome);
+    const resumoAtual = calcularResumoMes(ano, mesAtualNome);
+    const resumoAnt = calcularResumoMes(refAnt.ano, refAnt.mes);
+    const deltaLiquido = resumoAtual.liquido - resumoAnt.liquido;
+    const baseAnt = Math.abs(resumoAnt.liquido);
+    const pctVsAnt = baseAnt >= 0.01 ? (deltaLiquido / baseAnt) * 100 : null;
+    let deltaClass = "resumo-comparacao__delta--flat";
+    if (deltaLiquido > 0.005) deltaClass = "resumo-comparacao__delta--up";
+    else if (deltaLiquido < -0.005) deltaClass = "resumo-comparacao__delta--down";
     
     // CORES CORRIGIDAS: Usando variáveis do CSS sem fixar #fff
     const corDinamica = "var(--inter-text)"; 
@@ -576,7 +682,7 @@ function render() {
                 <div class="resumo-esquerda">
                     <span class="bank-label">SALDO TOTAL EM CONTA</span>
                     
-                    <strong class="bank-value destaque" id="vTotal">
+                    <strong class="bank-value destaque tabular-nums" id="vTotal">
                         R$ 0,00
                     </strong>
 
@@ -597,7 +703,7 @@ function render() {
                 <div class="resumo-direita">
                     <span class="bank-label">LIMITE DISPONÍVEL</span>
                     
-                    <strong class="bank-value limite-valor">
+                    <strong class="bank-value limite-valor tabular-nums">
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
 
@@ -615,68 +721,87 @@ function render() {
 
             <div class="resumo-item esquerda">
                 <span class="bank-label">SALDO PAGAMENTO</span>
-                <strong id="vPag">R$ 0,00</strong>
+                <strong id="vPag" class="tabular-nums">R$ 0,00</strong>
             </div>
 
             <div class="divisor-vertical"></div>
 
             <div class="resumo-item direita">
                 <span class="bank-label">SALDO ADIANTAMENTO</span>
-                <strong id="vAdi">R$ 0,00</strong>
+                <strong id="vAdi" class="tabular-nums">R$ 0,00</strong>
             </div>
 
+        </div>
+
+        <div class="bank-card resumo-comparacao full">
+            <div class="resumo-comparacao__head">
+                <span class="resumo-comparacao__head-title">Comparativo</span>
+                <span class="resumo-comparacao__head-sub">Mês anterior · ${refAnt.mes}</span>
+            </div>
+            <div class="resumo-comparacao__row">
+                <div class="resumo-comparacao__col">
+                    <span class="resumo-comparacao__metric-label">Este mês</span>
+                    <div class="comparacao-valor tabular-nums" style="color: ${corDinamica}">R$ ${resumoAtual.liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                </div>
+                <div class="resumo-comparacao__divider" aria-hidden="true"></div>
+                <div class="resumo-comparacao__col">
+                    <span class="resumo-comparacao__metric-label">Mês anterior</span>
+                    <div class="comparacao-valor tabular-nums comparacao-valor--muted" style="color: ${corSuave}">R$ ${resumoAnt.liquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</div>
+                </div>
+            </div>
+            <div class="resumo-comparacao__delta ${deltaClass}">
+                <span class="resumo-comparacao__delta-label">Variação</span>
+                <span class="resumo-comparacao__delta-text tabular-nums">${deltaLiquido >= 0 ? "+" : ""}R$ ${deltaLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}${pctVsAnt != null ? ` · ${pctVsAnt >= 0 ? "+" : ""}${pctVsAnt.toFixed(1)}%` : ""}</span>
+            </div>
         </div>
 
     </div>
     `;
 
-    // 3. EXTRATO (lista única, ordenada por data mais recente; sem cabeçalhos por dia)
-    const agrupadoPorData = {};
-    listaMesAtual.forEach(item => {
-        const dataKey = item.dataCriacao ? item.dataCriacao.split('T')[0] : new Date().toISOString().split('T')[0];
-        if (!agrupadoPorData[dataKey]) agrupadoPorData[dataKey] = [];
-        agrupadoPorData[dataKey].push(item);
-    });
-
-    const datasOrdenadas = Object.keys(agrupadoPorData).sort((a, b) => new Date(b) - new Date(a));
-    const itensExtratoOrdenados = datasOrdenadas.flatMap((data) => agrupadoPorData[data]);
-
+    // 3. EXTRATO — ordem = ordem do array (permite reordenar livremente; data só informativa)
     let htmlExtrato = `
-        <div class="bank-card" style="margin-top:20px; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-                <h3 style="font-size: 16px; font-weight: 600; color: ${corDinamica}">Extrato</h3>
-                <span style="color:${corSuave}; font-size:12px">${listaMesAtual.length} lançamentos</span>
+        <div class="bank-card extrato-card">
+            <div class="extrato-head">
+                <h3 class="extrato-title">Extrato</h3>
+                <span class="extrato-hint">${listaMesAtual.length} lançamentos · arraste pela coluna ⋮⋮</span>
             </div>
             <div class="container-extrato">`;
 
-    itensExtratoOrdenados.forEach((item) => {
+    listaMesAtual.forEach((item) => {
         const isEntrada = item.cat === "Entrada";
         const isPrevisto = item.pago === false;
         const icones = {"Pessoal": "🛒", "Necessidades": "🏠", "Guardar": "💰", "Entrada": "💵"};
         const icone = icones[item.cat] || "📝";
+        const dataLabel = formatarDataExtrato(item.dataCriacao);
+        const idJs = JSON.stringify(String(item.id));
+        const descSafe = escapeHtmlModelo(item.desc);
+        const origemSafe = escapeHtmlModelo(item.origem || "Carteira");
+        const valorCls = isEntrada ? "extrato-valor extrato-valor--entrada tabular-nums" : "extrato-valor extrato-valor--saida tabular-nums";
 
         htmlExtrato += `
-                <div class="item-transacao" onclick="abrirEdicao('${item.id}')" style="display: flex; align-items: center; padding: 12px 0; cursor: pointer; border-bottom: 1px solid var(--inter-border); ${isPrevisto ? 'opacity: 0.5' : ''}">
-                    <div class="icone-circulo" style="width: 40px; height: 40px; background: var(--icon-bg); border-radius: 50%; display: flex; justify-content: center; align-items: center; margin-right: 15px; font-size: 18px; border: 1px solid var(--inter-border);">
-                        ${icone}
+                <div class="item-transacao" data-item-id="${String(item.id).replace(/"/g, "&quot;")}" data-pago="${isPrevisto ? "false" : "true"}">
+                    <div class="extrato-handle" aria-label="Arrastar para reordenar" title="Arrastar">⋮⋮</div>
+                    <div class="item-transacao__main" onclick='abrirEdicao(${idJs})'>
+                    <div class="extrato-icone" aria-hidden="true">${icone}</div>
+                    <div class="extrato-info">
+                        <div class="extrato-desc">${descSafe}</div>
+                        <div class="extrato-meta">${origemSafe}${dataLabel ? " · " + dataLabel : ""}</div>
                     </div>
-                    <div style="flex-grow: 1;">
-                        <div style="font-size: 14px; color: ${corDinamica}">${item.desc}</div>
-                        <div style="font-size: 12px; color: ${corSuave}">${item.origem || 'Carteira'}</div>
-                    </div>
-                    <div style="text-align: right;">
-                    <div style="font-size: 14px; font-weight: bold; color: ${isEntrada ? 'var(--green)' : 'var(--red)'}">
-                        ${isEntrada ? '' : '-'} R$ ${parseFloat(item.valor).toFixed(2)}
+                    <div class="extrato-valores">
+                    <div class="${valorCls}">
+                        ${isEntrada ? "" : "- "}R$ ${parseFloat(item.valor).toFixed(2)}
                     </div>
                     ${isPrevisto ? `
-                        <button 
-                            onclick="confirmarPagamentoDireto(event, '${item.id}')" 
-                            style="background: none; border: 1px solid var(--inter-orange); color: var(--inter-orange); font-size: 9px; padding: 2px 5px; border-radius: 4px; cursor: pointer; margin-top: 4px;">
-                            PENDENTE
+                        <button type="button" class="extrato-btn-pendente"
+                            onclick='confirmarPagamentoDireto(event, ${idJs})'>
+                            Pendente
                         </button>
-                    ` : ''}
+                    ` : ""}
                     </div>
-                    <div style="margin-left: 15px; color: var(--inter-orange); font-size: 12px;">❯</div>
+                    <div class="extrato-chevron" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                    </div>
                 </div>
             `;
     });
@@ -714,26 +839,27 @@ async function confirmarPagamento(id) {
 // Função auxiliar para não repetir código das metas
 function renderizarBlocoMeta(titulo, totalEntrada, gastos) {
     const metasConfig = { Necessidades: 0.4, Pessoal: 0.3, Guardar: 0.3 };
-    let html = `<div><h4 style="color:var(--inter-orange); font-size: 12px; margin-bottom: 15px; border-left: 3px solid var(--inter-orange); padding-left: 10px;">${titulo} (R$ ${totalEntrada.toFixed(2)})</h4>`;
-    
+    let html = `<div class="meta-grupo"><h4 class="meta-grupo__titulo">${escapeHtmlModelo(titulo)} <span class="tabular-nums">(R$ ${totalEntrada.toFixed(2)})</span></h4>`;
+
     for (let cat in metasConfig) {
         const metaValor = totalEntrada * metasConfig[cat];
         const gasto = gastos[cat] || 0;
         const porcentagem = metaValor > 0 ? (gasto / metaValor) * 100 : 0;
         const sobra = metaValor - gasto;
+        const fillBg = porcentagem > 100 ? "var(--red)" : "var(--inter-orange)";
 
         html += `
-            <div style="margin-bottom: 15px;">
-                <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px;">
-                    <span>${cat}</span>
-                    <span style="font-weight: bold;">${porcentagem.toFixed(1)}%</span>
+            <div class="meta-linha">
+                <div class="meta-linha__top">
+                    <span>${escapeHtmlModelo(cat)}</span>
+                    <span class="meta-linha__pct tabular-nums">${porcentagem.toFixed(1)}%</span>
                 </div>
-                <div style="width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden;">
-                    <div style="width: ${Math.min(porcentagem, 100)}%; height: 100%; background: ${porcentagem > 100 ? '#ff4d4d' : 'var(--inter-orange)'}; transition: width 0.5s;"></div>
+                <div class="meta-barra-track">
+                    <div class="meta-barra-fill" style="width: ${Math.min(porcentagem, 100)}%; background: ${fillBg};"></div>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--inter-gray); margin-top: 4px;">
-                    <span>Gasto: R$ ${gasto.toFixed(2)}</span>
-                    <span>Sobra: R$ ${sobra.toFixed(2)}</span>
+                <div class="meta-linha__foot">
+                    <span class="tabular-nums">Gasto: R$ ${gasto.toFixed(2)}</span>
+                    <span class="tabular-nums">Sobra: R$ ${sobra.toFixed(2)}</span>
                 </div>
             </div>`;
     }
@@ -745,17 +871,17 @@ function renderizarBlocoMeta(titulo, totalEntrada, gastos) {
 // ==========================================================================
 function gerarBarraUI(nome, atual, limite) {
     const porcento = limite > 0 ? Math.min((atual / limite) * 100, 100) : 0;
-    const corBarra = porcento >= 100 ? "#ff4d4d" : "var(--inter-orange)";
+    const corBarra = porcento >= 100 ? "var(--red)" : "var(--inter-orange)";
     return `
-        <div class="bank-progress-container" style="margin-bottom: 12px;">
-            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
-                <span>${nome}</span><span>${porcento.toFixed(1)}%</span>
+        <div class="bank-progress-container meta-barra-ui">
+            <div class="meta-barra-ui__row">
+                <span>${nome}</span><span class="tabular-nums">${porcento.toFixed(1)}%</span>
             </div>
-            <div class="bank-progress-bg" style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
-                <div class="bank-progress-fill" style="width: ${porcento}%; height:100%; background:${corBarra}; transition:0.5s;"></div>
+            <div class="bank-progress-bg bank-progress-bg--metas">
+                <div class="bank-progress-fill" style="width: ${porcento}%; background:${corBarra};"></div>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--inter-gray); margin-top:4px;">
-                <span>Gasto: R$ ${atual.toFixed(2)}</span><span>Sobra: R$ ${(limite - atual).toFixed(2)}</span>
+            <div class="meta-barra-ui__foot">
+                <span class="tabular-nums">Gasto: R$ ${atual.toFixed(2)}</span><span class="tabular-nums">Sobra: R$ ${(limite - atual).toFixed(2)}</span>
             </div>
         </div>`;
 }
@@ -876,13 +1002,13 @@ function adicionarComModal() {
     };
 
     const ano = getAnoSelecionado();
-    ensureAnoMes(ano, mes).push(novoItem);
-    
+    ensureAnoMes(ano, mes).unshift(novoItem);
+
     // Limpar e fechar
     desc.value = "";
     valor.value = "";
-    if (check) check.checked = false; 
-    
+    if (check) check.checked = false;
+
     fecharModal(); // Fecha o modal após adicionar
     
     persistDadosLocal(Date.now());
@@ -979,68 +1105,35 @@ function importarExcel(input) {
 
 function ativarDragAndDrop() {
     const container = document.querySelector(".container-extrato");
-    if (!container) return;
+    if (!container || typeof Sortable === "undefined") return;
 
-    const rows = container.querySelectorAll(".item-transacao");
-    let draggedId = null;
+    if (sortableExtrato) {
+        sortableExtrato.destroy();
+        sortableExtrato = null;
+    }
 
-    rows.forEach((row) => {
-        row.setAttribute("draggable", true);
-
-        row.addEventListener("dragstart", (e) => {
-            // Em vez de index, usamos o ID único que já está no seu HTML
-            // Note que no seu render() você passa abrirEdicao('ID'), vamos capturar esse ID
-            const onclickAttr = e.currentTarget.getAttribute("onclick");
-            draggedId = onclickAttr.match(/'([^']+)'/)[1]; 
-            
-            e.currentTarget.classList.add("dragging");
-            e.dataTransfer.effectAllowed = "move";
-        });
-
-        row.addEventListener("dragend", (e) => {
-            e.currentTarget.classList.remove("dragging");
-        });
-
-        row.addEventListener("dragover", (e) => {
-            e.preventDefault();
-        });
-
-        row.addEventListener("drop", async (e) => {
-            e.preventDefault();
-            const targetRow = e.target.closest(".item-transacao");
-            if (!targetRow || !draggedId) return;
-
-            const targetOnclick = targetRow.getAttribute("onclick");
-            const targetId = targetOnclick.match(/'([^']+)'/)[1];
-
-            if (draggedId === targetId) return;
-
+    sortableExtrato = Sortable.create(container, {
+        animation: 150,
+        handle: ".extrato-handle",
+        draggable: ".item-transacao",
+        filter: "button, a, input, textarea, select",
+        preventOnFilter: true,
+        ghostClass: "sortable-ghost",
+        chosenClass: "sortable-chosen",
+        onEnd(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
             const mes = document.getElementById("filtroMes").value;
             const ano = getAnoSelecionado();
             const listaMes = dados[ano] && dados[ano][mes];
             if (!listaMes) return;
-
-            // 1. Localiza os índices reais no array original
-            const indexOrigem = listaMes.findIndex(i => i.id == draggedId);
-            const indexDestino = listaMes.findIndex(i => i.id == targetId);
-
-            if (indexOrigem !== -1 && indexDestino !== -1) {
-                // 2. Reordena o array original baseado nos IDs
-                const [itemMovido] = listaMes.splice(indexOrigem, 1);
-                listaMes.splice(indexDestino, 0, itemMovido);
-
-                // 3. Feedback visual e persistência
+            const [movido] = listaMes.splice(evt.oldIndex, 1);
+            listaMes.splice(evt.newIndex, 0, movido);
+            persistDadosLocal(Date.now());
+            queueMicrotask(() => {
                 render();
-                
-                persistDadosLocal(Date.now());
-                
-                if (typeof salvarDados === "function") {
-                    await salvarDados();
-                } else if (typeof salvarNoBanco === "function") {
-                    await salvarNoBanco();
-                }
-            }
-        });
+                if (typeof salvarNoBanco === "function") salvarNoBanco();
+            });
+        },
     });
 }
 
@@ -1172,8 +1265,6 @@ function buildMenuAnos() {
 }
 
 window.addEventListener("load", () => {
-    verificarAcesso();
-
     const filtroMes = document.getElementById("filtroMes");
     if (filtroMes) {
         buildMenuAnos();
@@ -1203,26 +1294,6 @@ function toggleMenuFixos() {
     }
 }
 
-function toggleMenuExportar() {
-    const menu = document.getElementById("menuExportOpcoes");
-    const btn = document.getElementById("btnMasterExport");
-    if (!menu || !btn) return;
-
-    if (!menu.classList.contains("aberto")) {
-        menu.classList.add("aberto");
-        btn.setAttribute("aria-expanded", "true");
-        menu.setAttribute("aria-hidden", "false");
-        btn.style.transform = "rotate(90deg)";
-        btn.style.background = "var(--inter-orange)";
-    } else {
-        menu.classList.remove("aberto");
-        btn.setAttribute("aria-expanded", "false");
-        menu.setAttribute("aria-hidden", "true");
-        btn.style.transform = "rotate(0deg)";
-        btn.style.background = "";
-    }
-}
-
 // Fechar o menu se clicar fora dele
 window.addEventListener("click", function (e) {
     const menuFixos = document.getElementById("menuFixosOpcoes");
@@ -1233,16 +1304,6 @@ window.addEventListener("click", function (e) {
         menuFixos.setAttribute("aria-hidden", "true");
         btnFixos.style.transform = "";
         btnFixos.style.background = "";
-    }
-
-    const menuExport = document.getElementById("menuExportOpcoes");
-    const btnExport = document.getElementById("btnMasterExport");
-    if (menuExport && btnExport && !btnExport.contains(e.target) && !menuExport.contains(e.target)) {
-        menuExport.classList.remove("aberto");
-        btnExport.setAttribute("aria-expanded", "false");
-        menuExport.setAttribute("aria-hidden", "true");
-        btnExport.style.transform = "";
-        btnExport.style.background = "";
     }
 });
 
@@ -1322,23 +1383,62 @@ function removerItemEdicao() {
     }
 }
 
+function fecharToastDesfazer() {
+    const t = document.getElementById("toast-desfazer");
+    if (t) t.style.display = "none";
+    clearTimeout(desfazerToastTimer);
+}
+
+function mostrarToastDesfazer() {
+    const t = document.getElementById("toast-desfazer");
+    if (!t) return;
+    t.style.display = "flex";
+    clearTimeout(desfazerToastTimer);
+    desfazerToastTimer = setTimeout(() => {
+        ultimoRemovido = null;
+        fecharToastDesfazer();
+    }, 8000);
+}
+
+async function desfazerExclusao() {
+    if (!ultimoRemovido) return;
+    const { ano, mes, index, item } = ultimoRemovido;
+    if (!dados[ano]) dados[ano] = {};
+    if (!dados[ano][mes]) dados[ano][mes] = [];
+    const insertAt = Math.min(Math.max(0, index), dados[ano][mes].length);
+    dados[ano][mes].splice(insertAt, 0, item);
+    ultimoRemovido = null;
+    fecharToastDesfazer();
+    persistDadosLocal(Date.now());
+    render();
+    await salvarDados();
+}
+
 async function executarRemocao() {
     const mesAtual = document.getElementById("filtroMes").value;
     const ano = getAnoSelecionado();
     const idParaRemover = indexParaRemover;
 
     if (!dados[ano] || !dados[ano][mesAtual]) return;
-    // Filtra o array removendo o item com aquele ID
-    dados[ano][mesAtual] = dados[ano][mesAtual].filter(item => item.id != idParaRemover);
-    
-    // Fecha o modal de confirmação
+    const arr = dados[ano][mesAtual];
+    const idx = arr.findIndex((item) => item.id == idParaRemover);
+    if (idx === -1) {
+        fecharConfirmacao();
+        return;
+    }
+    ultimoRemovido = {
+        ano,
+        mes: mesAtual,
+        index: idx,
+        item: JSON.parse(JSON.stringify(arr[idx])),
+    };
+    dados[ano][mesAtual] = arr.filter((item) => item.id != idParaRemover);
+
     fecharConfirmacao();
-    
-    // Salva e atualiza a tela
-    await salvarDados(); 
+
+    await salvarDados();
     render();
-    
-    mostrarToastSucesso("Lançamento removido!");
+    mostrarToastDesfazer();
 }
 
 async function confirmarPagamentoDireto(event, id) {
@@ -1458,3 +1558,8 @@ document.addEventListener("keydown", (e) => {
 });
 
 applyStoredTheme();
+
+(function syncFurtivoIcon() {
+    const btn = document.getElementById("btnFurtivo");
+    if (btn) btn.classList.toggle("is-blurring", modoFurtivo);
+})();

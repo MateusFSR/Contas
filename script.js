@@ -31,10 +31,12 @@ function migrarEstruturaLegada(obj) {
 
 function parsePayloadNuvem(raw) {
     if (!raw || typeof raw !== "object") return { data: null, updatedAt: 0, modelosFixos: undefined };
-    if (raw.data !== undefined && raw.updatedAt != null) {
+    // Envelope guardado no Supabase: { data, updatedAt?, modelosFixos? }
+    // Se `updatedAt` faltar (ex.: só a Edge Function do Telegram gravou), ainda precisamos usar `data`.
+    if (raw.data !== undefined && raw.data !== null && typeof raw.data === "object") {
         return {
             data: raw.data,
-            updatedAt: Number(raw.updatedAt) || 0,
+            updatedAt: raw.updatedAt != null ? Number(raw.updatedAt) || 0 : 0,
             modelosFixos: Array.isArray(raw.modelosFixos) ? raw.modelosFixos : undefined,
         };
     }

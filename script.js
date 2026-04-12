@@ -345,6 +345,11 @@ function initSortableModelosFixos() {
         preventOnFilter: true,
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
+        scroll: true,
+        forceAutoScrollFallback: true,
+        bubbleScroll: true,
+        scrollSensitivity: 48,
+        scrollSpeed: 14,
         onEnd(evt) {
             if (evt.oldIndex === evt.newIndex) return;
             const [movido] = modelosFixos.splice(evt.oldIndex, 1);
@@ -1122,6 +1127,11 @@ function ativarDragAndDrop() {
         preventOnFilter: true,
         ghostClass: "sortable-ghost",
         chosenClass: "sortable-chosen",
+        scroll: true,
+        forceAutoScrollFallback: true,
+        bubbleScroll: true,
+        scrollSensitivity: 48,
+        scrollSpeed: 14,
         onEnd(evt) {
             if (evt.oldIndex === evt.newIndex) return;
             const mes = document.getElementById("filtroMes").value;
@@ -1226,6 +1236,11 @@ function initSortable() {
     Sortable.create(el, {
         handle: '.handle', // Só arrasta se pegar no ícone ≡
         animation: 150,
+        scroll: true,
+        forceAutoScrollFallback: true,
+        bubbleScroll: true,
+        scrollSensitivity: 48,
+        scrollSpeed: 14,
         onEnd: function (evt) {
             const mesAtualNome = document.getElementById("filtroMes").value;
             const ano = getAnoSelecionado();

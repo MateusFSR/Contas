@@ -730,6 +730,12 @@ function render() {
                         R$ ${limiteDisponivel.toLocaleString('pt-BR', {minimumFractionDigits: 2})}
                     </strong>
 
+                    <div class="resumo-limite-detalhes tabular-nums">
+                        <span>Total R$ ${totalCaixinhaHistorico.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        <span class="resumo-limite-sep">·</span>
+                        <span>Utilizado R$ ${limiteUsadoNoMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                    </div>
+
                     <div class="barra-limite" aria-hidden="true">
                         <div class="barra-limite-disponivel" style="width: ${pctDisponivelCredito}%"></div>
                         <div class="barra-limite-usado" style="width: ${pctUsadoCredito}%"></div>

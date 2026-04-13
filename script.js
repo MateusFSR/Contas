@@ -135,13 +135,21 @@ function calcularResumoMes(anoStr, mesNome) {
     if (!dados[anoStr] || !dados[anoStr][mesNome]) {
         return { totalEntradas: 0, totalSaidas: 0, liquido: 0 };
     }
+    const normalizar = (txt) =>
+        (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     let totalEntradas = 0;
     let totalSaidas = 0;
     dados[anoStr][mesNome].forEach((item) => {
         const valor = parseFloat(item.valor) || 0;
+        const categoria = normalizar(item.cat);
+        const origem = normalizar(item.origem);
+        const desc = normalizar(item.desc);
+        const isCredito = origem.includes("credito") || categoria.includes("credito");
+        const isAjuste = categoria.includes("ajuste") || origem.includes("ajuste") || desc.includes("ajuste");
+        const isAjusteCredito = isCredito && isAjuste;
         if (item.cat === "Entrada") {
             totalEntradas += valor;
-        } else if (item.pago !== false) {
+        } else if (item.pago !== false && !isAjusteCredito) {
             totalSaidas += valor;
         }
     });
@@ -604,8 +612,9 @@ function render() {
     // 1. CÁLCULOS
     listaMesAtual.forEach(item => {
     const valor = parseFloat(item.valor) || 0;
-    const origem = (item.origem || "").toLowerCase();
-    const desc = (item.desc || "").toLowerCase();
+    const origem = (item.origem || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const desc = (item.desc || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const categoria = (item.cat || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
     // =====================
     // ENTRADAS
@@ -626,17 +635,24 @@ function render() {
     // SAÍDAS
     // =====================
     else if (item.pago !== false) {
-        totalSaidas += valor;
+        const isCredito = origem.includes("credito") || categoria.includes("credito");
+        const isAjuste = categoria.includes("ajuste") || origem.includes("ajuste") || desc.includes("ajuste");
+        const isAjusteCredito = isCredito && isAjuste;
 
-        if (origem.includes("pag")) {
-            pagOut += valor;
+        // Ajuste de credito deve afetar somente o limite, sem baixar saldo em conta.
+        if (!isAjusteCredito) {
+            totalSaidas += valor;
+
+            if (origem.includes("pag")) {
+                pagOut += valor;
+            }
+
+            if (origem.includes("adi")) {
+                adiOut += valor;
+            }
         }
 
-        if (origem.includes("adi")) {
-            adiOut += valor;
-        }
-
-        if (item.origem && item.origem.includes("Crédito")) {
+        if (isCredito) {
             limiteUsadoNoMes += valor;
         }
     }

@@ -144,9 +144,16 @@ function calcularResumoMes(anoStr, mesNome) {
         const categoria = normalizar(item.cat);
         const origem = normalizar(item.origem);
         const desc = normalizar(item.desc);
+        const isCreditoPag =
+            origem.includes("credito-pag") ||
+            categoria.includes("credito-pag") ||
+            desc.includes("credito-pag");
         const isCredito = origem.includes("credito") || categoria.includes("credito");
         const isAjuste = categoria.includes("ajuste") || origem.includes("ajuste") || desc.includes("ajuste");
         const isAjusteCredito = isCredito && isAjuste;
+        if (isCreditoPag) {
+            return;
+        }
         if (item.cat === "Entrada") {
             totalEntradas += valor;
         } else if (item.pago !== false && !isAjusteCredito) {
@@ -615,11 +622,16 @@ function render() {
     const origem = (item.origem || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const desc = (item.desc || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     const categoria = (item.cat || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const isCreditoPag = origem.includes("credito-pag") || categoria.includes("credito-pag") || desc.includes("credito-pag");
+    const isCredito = origem.includes("credito") || categoria.includes("credito");
 
     // =====================
     // ENTRADAS
     // =====================
-    if (item.cat === "Entrada") {
+    if (isCreditoPag) {
+        // "credito-pag" é movimentação interna do cartão: não altera o saldo total.
+        limiteUsadoNoMes -= valor;
+    } else if (item.cat === "Entrada") {
         totalEntradas += valor;
 
         if (desc.includes("pagamento") || origem.includes("pag")) {
@@ -635,7 +647,6 @@ function render() {
     // SAÍDAS
     // =====================
     else if (item.pago !== false) {
-        const isCredito = origem.includes("credito") || categoria.includes("credito");
         const isAjuste = categoria.includes("ajuste") || origem.includes("ajuste") || desc.includes("ajuste");
         const isAjusteCredito = isCredito && isAjuste;
 
@@ -657,6 +668,7 @@ function render() {
         }
     }
     });
+    limiteUsadoNoMes = Math.max(0, limiteUsadoNoMes);
 
     const saldoPagamento = pagIn - pagOut;
     const saldoAdiantamento = adiIn - adiOut;

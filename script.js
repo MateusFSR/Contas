@@ -131,32 +131,101 @@ function setSyncStatus(mode) {
     }
 }
 
+function normalizarTexto(txt) {
+    return (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+function normalizarChave(txt) {
+    return normalizarTexto(txt).replace(/[_\s]+/g, "-");
+}
+
+function isCategoria(cat, nomeEsperado) {
+    return normalizarChave(cat) === normalizarChave(nomeEsperado);
+}
+
+function isOrigemCredito(origem) {
+    const o = normalizarChave(origem);
+    return (
+        o === "credito-saldo" ||
+        o === "credito-adiantamento" ||
+        o === "credito-pagamento" ||
+        o === "credito-pag" ||
+        o === "credito-adi"
+    );
+}
+
+function classificarOrigemMeta(origem, desc) {
+    const o = normalizarChave(origem);
+    const d = normalizarChave(desc);
+
+    if (
+        o === "pagamento" ||
+        o === "credito-pag" ||
+        o === "credito-pagamento" ||
+        o.includes("pagamento")
+    ) {
+        return "Pagamento";
+    }
+    if (
+        o === "adiantamento" ||
+        o === "credito-adi" ||
+        o === "credito-adiantamento" ||
+        o.includes("adiantamento")
+    ) {
+        return "Adiantamento";
+    }
+
+    // Fallback para entradas antigas/inconsistentes baseadas na descrição.
+    if (d.includes("pagamento") || d.includes("-pag")) return "Pagamento";
+    if (d.includes("adiantamento") || d.includes("-adi")) return "Adiantamento";
+    return null;
+}
+
+function isConsumoCredito(item) {
+    return isCategoria(item.cat, "Pessoal") && isOrigemCredito(item.origem);
+}
+
+function calcularLimiteBaseDoMes(anoStr, mesNome) {
+    if (!dados[anoStr] || !dados[anoStr][mesNome]) return 0;
+    let total = 0;
+    dados[anoStr][mesNome].forEach((item) => {
+        if (item.pago === false) return;
+        if (isCategoria(item.cat, "Guardar")) {
+            total += parseFloat(item.valor) || 0;
+        }
+    });
+    return total;
+}
+
+function calcularLimiteBaseAtualMaisAnterior(anoStr, mesNome) {
+    const atual = calcularLimiteBaseDoMes(anoStr, mesNome);
+    const refAnt = mesAnteriorRef(anoStr, mesNome);
+    const anterior = calcularLimiteBaseDoMes(refAnt.ano, refAnt.mes);
+    return atual + anterior;
+}
+
+function calcularConsumoLimiteNoMes(anoStr, mesNome) {
+    if (!dados[anoStr] || !dados[anoStr][mesNome]) return 0;
+    let consumo = 0;
+    dados[anoStr][mesNome].forEach((item) => {
+        if (item.pago === false) return;
+        if (!isConsumoCredito(item)) return;
+        consumo += parseFloat(item.valor) || 0;
+    });
+    return consumo;
+}
+
 function calcularResumoMes(anoStr, mesNome) {
     if (!dados[anoStr] || !dados[anoStr][mesNome]) {
         return { totalEntradas: 0, totalSaidas: 0, liquido: 0 };
     }
-    const normalizar = (txt) =>
-        (txt || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     let totalEntradas = 0;
     let totalSaidas = 0;
     dados[anoStr][mesNome].forEach((item) => {
         const valor = parseFloat(item.valor) || 0;
-        const categoria = normalizar(item.cat);
-        const origem = normalizar(item.origem);
-        const desc = normalizar(item.desc);
-        const isCreditoPag =
-            origem.includes("credito-pag") ||
-            categoria.includes("credito-pag") ||
-            desc.includes("credito-pag");
-        const isCredito = origem.includes("credito") || categoria.includes("credito");
-        const isAjuste = categoria.includes("ajuste") || origem.includes("ajuste") || desc.includes("ajuste");
-        const isAjusteCredito = isCredito && isAjuste;
-        if (isCreditoPag) {
-            return;
-        }
-        if (item.cat === "Entrada") {
+        if (isCategoria(item.cat, "Entrada")) {
             totalEntradas += valor;
-        } else if (item.pago !== false && !isAjusteCredito) {
+        } else if (item.pago !== false && !isConsumoCredito(item)) {
             totalSaidas += valor;
         }
     });
@@ -614,24 +683,17 @@ function render() {
     let totalEntradas = 0, totalSaidas = 0;
     let pagIn = 0, adiIn = 0;
     let pagOut = 0, adiOut = 0
-    let limiteUsadoNoMes = 0;
     
     // 1. CÁLCULOS
     listaMesAtual.forEach(item => {
     const valor = parseFloat(item.valor) || 0;
-    const origem = (item.origem || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const desc = (item.desc || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const categoria = (item.cat || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const isCreditoPag = origem.includes("credito-pag") || categoria.includes("credito-pag") || desc.includes("credito-pag");
-    const isCredito = origem.includes("credito") || categoria.includes("credito");
-
+    const origem = normalizarTexto(item.origem);
+    const desc = normalizarTexto(item.desc);
+    const isCreditoConsumo = isConsumoCredito(item);
     // =====================
     // ENTRADAS
     // =====================
-    if (isCreditoPag) {
-        // "credito-pag" é movimentação interna do cartão: não altera o saldo total.
-        limiteUsadoNoMes -= valor;
-    } else if (item.cat === "Entrada") {
+    if (isCategoria(item.cat, "Entrada")) {
         totalEntradas += valor;
 
         if (desc.includes("pagamento") || origem.includes("pag")) {
@@ -646,50 +708,30 @@ function render() {
     // =====================
     // SAÍDAS
     // =====================
-    else if (item.pago !== false) {
-        const isAjuste = categoria.includes("ajuste") || origem.includes("ajuste") || desc.includes("ajuste");
-        const isAjusteCredito = isCredito && isAjuste;
+    else if (item.pago !== false && !isCreditoConsumo) {
+        totalSaidas += valor;
 
-        // Ajuste de credito deve afetar somente o limite, sem baixar saldo em conta.
-        if (!isAjusteCredito) {
-            totalSaidas += valor;
-
-            if (origem.includes("pag")) {
-                pagOut += valor;
-            }
-
-            if (origem.includes("adi")) {
-                adiOut += valor;
-            }
+        if (origem.includes("pag")) {
+            pagOut += valor;
         }
 
-        if (isCredito) {
-            limiteUsadoNoMes += valor;
+        if (origem.includes("adi")) {
+            adiOut += valor;
         }
     }
     });
-    limiteUsadoNoMes = Math.max(0, limiteUsadoNoMes);
 
     const saldoPagamento = pagIn - pagOut;
     const saldoAdiantamento = adiIn - adiOut;
 
-    let totalCaixinhaHistorico = 0;
-    for (let i = 0; i <= indexMesAtual; i++) {
-        const nomeM = MESES_ANO[i];
-        const arr = dados[ano] && dados[ano][nomeM];
-        if (arr) {
-            arr.forEach(item => { 
-                if (item.cat === "Guardar" && item.pago !== false) totalCaixinhaHistorico += item.valor; 
-            });
-        }
-    }
-
-    const limiteDisponivel = totalCaixinhaHistorico - limiteUsadoNoMes;
+    const limiteTotalCredito = calcularLimiteBaseAtualMaisAnterior(ano, mesAtualNome);
+    const limiteUsadoAteMes = calcularConsumoLimiteNoMes(ano, mesAtualNome);
+    const limiteDisponivel = Math.max(0, limiteTotalCredito - limiteUsadoAteMes);
     const pctUsadoCredito =
-        totalCaixinhaHistorico > 0
-            ? Math.min((limiteUsadoNoMes / totalCaixinhaHistorico) * 100, 100)
+        limiteTotalCredito > 0
+            ? Math.min((limiteUsadoAteMes / limiteTotalCredito) * 100, 100)
             : 0;
-    const pctDisponivelCredito = totalCaixinhaHistorico > 0 ? Math.max(0, 100 - pctUsadoCredito) : 0;
+    const pctDisponivelCredito = limiteTotalCredito > 0 ? Math.max(0, 100 - pctUsadoCredito) : 0;
 
     const refAnt = mesAnteriorRef(ano, mesAtualNome);
     const resumoAtual = calcularResumoMes(ano, mesAtualNome);
@@ -743,9 +785,9 @@ function render() {
                     </strong>
 
                     <div class="resumo-limite-detalhes tabular-nums">
-                        <span>Total R$ ${totalCaixinhaHistorico.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        <span>Total R$ ${limiteTotalCredito.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                         <span class="resumo-limite-sep">·</span>
-                        <span>Utilizado R$ ${limiteUsadoNoMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
+                        <span>Utilizado R$ ${limiteUsadoAteMes.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
                     </div>
 
                     <div class="barra-limite" aria-hidden="true">
@@ -886,7 +928,8 @@ function renderizarBlocoMeta(titulo, totalEntrada, gastos) {
         const metaValor = totalEntrada * metasConfig[cat];
         const gasto = gastos[cat] || 0;
         const porcentagem = metaValor > 0 ? (gasto / metaValor) * 100 : 0;
-        const sobra = metaValor - gasto;
+        const sobra = Math.max(0, metaValor - gasto);
+        const excedente = Math.max(0, gasto - metaValor);
         const fillBg = porcentagem > 100 ? "var(--red)" : "var(--inter-orange)";
 
         html += `
@@ -900,7 +943,7 @@ function renderizarBlocoMeta(titulo, totalEntrada, gastos) {
                 </div>
                 <div class="meta-linha__foot">
                     <span class="tabular-nums">Gasto: R$ ${gasto.toFixed(2)}</span>
-                    <span class="tabular-nums">Sobra: R$ ${sobra.toFixed(2)}</span>
+                    <span class="tabular-nums">${excedente > 0 ? "Excedente" : "Sobra"}: R$ ${(excedente > 0 ? excedente : sobra).toFixed(2)}</span>
                 </div>
             </div>`;
     }
@@ -1216,44 +1259,30 @@ function renderizarMetasDetalhadas() {
 
     if (!dados[ano] || !dados[ano][mes]) return;
 
-    dados[ano][mes].forEach(item => {
+    dados[ano][mes].forEach((item) => {
         const valor = parseFloat(item.valor) || 0;
-        const categoria = item.cat ? item.cat.toLowerCase() : ""; 
-        const origem = item.origem ? item.origem.toLowerCase() : ""; 
+        const origemMeta = classificarOrigemMeta(item.origem, item.desc);
 
-        // 1. ENTRADAS (Ajustado para "pag" e "adi")
-        if (categoria.includes("entrada")) {
-            const desc = item.desc ? item.desc.toLowerCase() : "";
-            if (origem.includes("pag") || desc.includes("pag")) {
-                pagIn += valor;
-            } else if (origem.includes("adi") || desc.includes("adi")) {
-                adiIn += valor;
-            }
-        } 
-        
-        // 2. GASTOS (Ajustado para identificar "Crédito-Pag" e "Crédito-Adi")
-        else if (item.pago !== false) {
-            let alvo = null;
-            
-            // Se a origem tiver "pag", vai para o bloco de Pagamento
-            if (origem.includes("pag")) {
-                alvo = gastos.Pagamento;
-            } 
-            // Se a origem tiver "adi", vai para o bloco de Adiantamento
-            else if (origem.includes("adi")) {
-                alvo = gastos.Adiantamento;
-            }
+        if (!origemMeta) return;
 
-            if (alvo) {
-                // Identifica a categoria
-                if (categoria.includes("pessoal")) {
-                    alvo.Pessoal += valor;
-                } else if (categoria.includes("necessidade")) {
-                    alvo.Necessidades += valor;
-                } else if (categoria.includes("guardar")) {
-                    alvo.Guardar += valor;
-                }
-            }
+        // 1. ENTRADAS
+        if (isCategoria(item.cat, "Entrada")) {
+            if (origemMeta === "Pagamento") pagIn += valor;
+            if (origemMeta === "Adiantamento") adiIn += valor;
+            return;
+        }
+
+        // 2. GASTOS (somente pagos)
+        if (item.pago === false) return;
+        const alvo = gastos[origemMeta];
+        if (!alvo) return;
+
+        if (isCategoria(item.cat, "Pessoal")) {
+            alvo.Pessoal += valor;
+        } else if (isCategoria(item.cat, "Necessidades")) {
+            alvo.Necessidades += valor;
+        } else if (isCategoria(item.cat, "Guardar")) {
+            alvo.Guardar += valor;
         }
     });
 
